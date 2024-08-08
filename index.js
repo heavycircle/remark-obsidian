@@ -141,7 +141,6 @@ export default function remarkObsidian() {
           callout: callout,
         },
       };
-      console.log(contentDiv.children);
       if (contentDiv.children.length > 0)
         node.children = [titleDiv, contentDiv];
       else node.children = [titleDiv];
