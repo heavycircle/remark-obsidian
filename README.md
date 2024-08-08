@@ -8,11 +8,12 @@ A [remark](https://github.com/remarkjs/remark) plugin to extend support to [Obsi
 - [Install](#install)
 - [Use](#use)
 - [API](#api)
+- [Security](#security)
 - [License](#license)
 
 ## What is this?
 
-This package extends Markdown to support [Obsidian flavors](https://help.obsidian.md/Editing+and+formatting/Obsidian+Flavored+Markdown).
+This package is a [unified](unified) ([remark](https://github.com/remarkjs/remark)) package that extends Markdown to support [Obsidian flavors](https://help.obsidian.md/Editing+and+formatting/Obsidian+Flavored+Markdown).
 
 The list of Supported Obsidian Markdown items are:
 
@@ -34,7 +35,7 @@ _Obsidian's website notes that not all these are fully Obsidian-specific. The ma
 
 ## Install
 
-In Node.js (version 16+), install using `npm`:
+This package is [ESM only](https://gist.github.com/sindresorhus/a39789f98801d908bbc7ff3ecc99d99c). In Node.js (version 16+), install using [`npm`](https://docs.npmjs.com/cli/install):
 
 ```bash
 npm install @thecae/remark-obsidian
@@ -46,6 +47,8 @@ Most definitions are self-explanatory from the above table. However, it is worth
 
 Use the [Obsidian Callouts](https://help.obsidian.md/Editing+and+formatting/Callouts) guide for further instruction.
 
+This plugin is best used with [remark-gfm](https://www.npmjs.com/package/remark-gfm), [rehype-raw](https://www.npmjs.com/package/rehype-raw), and [remark-wiki-link-plus](https://www.npmjs.com/package/remark-wiki-link-plus).
+
 ## API
 
 This package exports no identifiers. The default export is `remarkObsidian`.
@@ -54,13 +57,24 @@ This package exports no identifiers. The default export is `remarkObsidian`.
 
 Provides support for Obsidian-flavored Markdown, including tables, callouts, links, embeds, and more.
 
+To get full use of the package, ensure you include Obsidian-compliant variables. Then, import the CSS file inside the `global.css` file:
+
+```css
+@import "@thecae/remark-obsidian/obsidian.module.css";
+```
+
 ###### Parameters
 
 There are no parameters.
 
 ###### Returns
 
-Transform ([`Transformer`](https://github.com/unifiedjs/unified#transformer).
+Transform ([`Transformer`](https://github.com/unifiedjs/unified#transformer)).
+
+# Security
+
+Use of remark-videos does not involve [rehype](https://github.com/rehypejs/rehype) ([hast](https://github.com/syntax-tree/hast)) or user content so there are no openings for [cross-site scripting (XSS)](https://en.wikipedia.org/wiki/Cross-site_scripting) attacks.
+
 
 # License
 
