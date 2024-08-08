@@ -23,18 +23,5 @@
   ],
   "repository": "thecae/remark-obsidian",
   "author": "C. Ellis",
-  "license": "MIT",
-  "devDependencies": {
-    "express": "^4.19.2",
-    "rehype": "^13.0.1",
-    "rehype-highlight": "^7.0.0",
-    "remark-frontmatter": "^5.0.0",
-    "remark-wiki-link": "^2.0.1",
-    "rehype-sanitize": "^6.0.0",
-    "remark": "^15.0.1",
-    "remark-gfm": "^4.0.0",
-    "remark-html": "^16.0.1",
-    "remark-prism": "^1.3.6",
-    "to-vfile": "^8.0.0"
-  }
+  "license": "MIT"
 }
