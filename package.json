@@ -1,6 +1,6 @@
 {
   "name": "@thecae/remark-obsidian",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A remark plugin to support Obsidian-flavored Markdown",
   "type": "module",
   "main": "index.js",
