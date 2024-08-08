@@ -1,0 +1,117 @@
+.callout {
+  overflow: hidden;
+  border-style: solid;
+  border-color: rgba(var(--callout-color), var(--callout-border-opacity));
+  border-width: var(--callout-border-width);
+  border-radius: var(--callout-radius);
+  margin: 1em 0;
+  mix-blend-mode: var(--callout-blend-mode);
+  background-color: rgba(var(--callout-color), 0.1);
+  padding: var(--callout-padding);
+
+  --callout-color: var(--callout-default);
+}
+
+.callout-icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+}
+
+.callout-icon svg {
+  height: 1em;
+  width: 1em;
+}
+
+.callout-title {
+  padding: var(--callout-title-padding);
+  display: flex;
+  gap: var(--size-4-1);
+  font-size: var(--callout-title-size);
+  color: rgb(var(--callout-color));
+  line-height: var(--line-height-tight);
+  align-items: flex-start;
+}
+
+.callout-title-inner {
+  --font-weight: var(--callout-title-weight);
+  font-weight: var(--font-weight);
+  color: var(--callout-title-color);
+}
+
+.callout-content {
+  overflow-x: auto;
+  padding: var(--callout-content-padding);
+  background-color: var(--callout-content-background);
+}
+
+.callout[callout="note"] {
+  --callout-color: var(--callout-note);
+}
+
+.callout[callout="abstract"],
+.callout[callout="summary"],
+.callout[callout="tldr"] {
+  --callout-color: var(--callout-summary);
+}
+
+.callout[callout="info"] {
+  --callout-color: var(--callout-info);
+}
+
+.callout[callout="todo"] {
+  --callout-color: var(--callout-todo);
+}
+
+.callout[callout="tip"],
+.callout[callout="hint"],
+.callout[callout="important"] {
+  --callout-color: var(--callout-tip);
+}
+
+.callout[callout="success"],
+.callout[callout="check"],
+.callout[callout="done"] {
+  --callout-color: var(--callout-success);
+}
+
+.callout[callout="question"],
+.callout[callout="help"],
+.callout[callout="faq"] {
+  --callout-color: var(--callout-question);
+}
+
+.callout[callout="warning"],
+.callout[callout="caution"],
+.callout[callout="attention"] {
+  --callout-color: var(--callout-warning);
+}
+
+.callout[callout="failure"],
+.callout[callout="fail"],
+.callout[callout="missing"] {
+  --callout-color: var(--callout-fail);
+}
+
+.callout[callout="danger"],
+.callout[callout="error"] {
+  --callout-color: var(--callout-error);
+}
+
+.callout[callout="bug"] {
+  --callout-color: var(--callout-bug);
+}
+
+.callout[callout="example"] {
+  --callout-color: var(--callout-example);
+}
+
+.callout[callout="quote"],
+.callout[callout="cite"] {
+  --callout-color: var(--callout-quote);
+}
+
+.highlight {
+  background-color: var(--text-highlight-bg);
+  color: var(--text-normal);
+}
