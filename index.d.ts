@@ -1,3 +1,3 @@
-declare module "@thecae/remark-obsidian" {
+declare module "@heavycircle/remark-obsidian" {
   export default function remarkObsidian(): any;
 }
