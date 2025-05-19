@@ -1,7 +1,7 @@
 {
-  "name": "@thecae/remark-obsidian",
-  "version": "1.1.1",
-  "description": "A remark plugin to support Obsidian-flavored Markdown",
+  "name": "@heavycircle/remark-obsidian",
+  "version": "1.1.2",
+  "description": "A remark plugin to support Obsidian-flavored Markdown (renamed from @thecae/remark-obsidian)",
   "type": "module",
   "main": "index.js",
   "types": "index.d.ts",
@@ -22,7 +22,7 @@
     "markdown",
     "obsidian"
   ],
-  "repository": "thecae/remark-obsidian",
-  "author": "C. Ellis",
+  "repository": "heavycircle/remark-obsidian",
+  "author": "heavycircle",
   "license": "MIT"
 }
