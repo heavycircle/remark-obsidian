@@ -38,7 +38,7 @@ _Obsidian's website notes that not all these are fully Obsidian-specific. The ma
 This package is [ESM only](https://gist.github.com/sindresorhus/a39789f98801d908bbc7ff3ecc99d99c). In Node.js (version 16+), install using [`npm`](https://docs.npmjs.com/cli/install):
 
 ```bash
-npm install @thecae/remark-obsidian
+npm install @heavycircle/remark-obsidian
 ```
 
 ## Use
@@ -60,7 +60,7 @@ Provides support for Obsidian-flavored Markdown, including tables, callouts, lin
 To get full use of the package, ensure you include Obsidian-compliant variables. Then, import the CSS file inside the `global.css` file:
 
 ```css
-@import "@thecae/remark-obsidian/obsidian.module.css";
+@import "@heavycircle/remark-obsidian/obsidian.module.css";
 ```
 
 ###### Parameters
@@ -78,4 +78,4 @@ Use of remark-videos does not involve [rehype](https://github.com/rehypejs/rehyp
 
 # License
 
-[MIT](LICENSE) &copy; C. Ellis
+[MIT](LICENSE) &copy; heavycircle
