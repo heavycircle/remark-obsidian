@@ -59,13 +59,26 @@ icons.set("example", ListIcon);
 icons.set("quote", QuoteIcon);
 icons.set("cite", QuoteIcon);
 
+// Get first text from a blockquote
+function getFirstText(node) {
+  if (!node) return undefined;
+  if (node.type === "text") return node.value;
+  if (Array.isArray(node.children)) {
+    for (const child of node.children) {
+      const result = getFirstText(child);
+      if (result) return result;
+    }
+  }
+  return undefined;
+}
+
 export default function remarkObsidian() {
   function blockVisitor(node) {
     /*
     Callouts are blockquotes denoted by [!type].
     Blockquotes have paragraph children, who have text children.
     */
-    let quote = node.children[0].children[0].value;
+    const quote = getFirstText(node);
 
     if (quote.startsWith("[!")) {
       // we have a callout. check for titles
