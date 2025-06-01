@@ -113,7 +113,9 @@ export default function remarkObsidian() {
       // Get the title
       let titleNode = {
         type: "text",
-        value: title,
+        value:
+          title ||
+          String(callout).charAt(0).toUpperCase() + String(callout).slice(1),
       };
       let titleText = {
         type: "div",
@@ -140,7 +142,7 @@ export default function remarkObsidian() {
       let contentDiv = {
         type: "div",
         children: [
-          ...node.children[0].children.slice(i),
+          ...node.children[0].children.slice(i + 1),
           ...node.children.slice(1),
         ],
         data: {
