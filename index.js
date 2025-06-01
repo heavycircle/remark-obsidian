@@ -80,12 +80,13 @@ export default function remarkObsidian() {
     */
     const quote = getFirstText(node);
 
-    if (quote.startsWith("[!")) {
-      // we have a callout. check for titles
-      let [title, ...content] = quote.split("\n");
-      let callout = title.split(" ")[0].slice(2, -1);
+    const calloutRegex = /^\[!(\w+)\]\s*(.*)/;
+    const match = quote.match(calloutRegex);
+    if (match) {
+      // Get the callout type and title
+      let [, callout, title] = match;
 
-      // get the icon
+      // Get the icon
       let iconMarkup = renderToStaticMarkup(createElement(icons.get(callout)));
       let iconNode = {
         type: "html",
@@ -101,14 +102,22 @@ export default function remarkObsidian() {
         },
       };
 
-      // get the title
+      // Get the end of the line (break between title and content)
+      let i = 0;
+      let children = node.children[0].children;
+      for (i = 0; i < children.length; ++i) {
+        // Check if we're at the break
+        if (children[i].type === "break") break;
+      }
+
+      // Get the title
       let titleNode = {
         type: "text",
-        value: title.split(" ").slice(1).join(" "),
+        value: title,
       };
       let titleText = {
         type: "div",
-        children: [titleNode, ...node.children[0].children.slice(1)],
+        children: [titleNode, ...node.children[0].children.slice(1, i)],
         data: {
           hProperties: {
             className: "callout-title-inner",
@@ -116,27 +125,22 @@ export default function remarkObsidian() {
         },
       };
 
-      // change the title to a div including icon and rest of text
+      // Change the title to a div including icon and rest of text
       let titleDiv = {
         type: "div",
         children: [iconDiv, titleText],
         data: {
           hProperties: {
-            className: "callout-title",
+            className: "callout-title font-bold",
           },
         },
       };
 
-      // get the content
-      let contentNode = {
-        type: "text",
-        value: content.join("\n"),
-      };
-
+      // Get the content
       let contentDiv = {
         type: "div",
         children: [
-          ...(content.length > 0 ? [contentNode] : []),
+          ...node.children[0].children.slice(i),
           ...node.children.slice(1),
         ],
         data: {
