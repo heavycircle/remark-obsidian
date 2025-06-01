@@ -117,7 +117,10 @@ export default function remarkObsidian() {
       // Get the title
       let titleNode = {
         type: "text",
-        value: i == 1 ? defaultTitle : title,
+        value:
+          i == 1 && node.children[0].children.length != 1
+            ? defaultTitle
+            : title,
       };
       let titleText = {
         type: "div",
