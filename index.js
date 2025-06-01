@@ -110,12 +110,15 @@ export default function remarkObsidian() {
         if (children[i].type === "break") break;
       }
 
+      // Check if we need default text
+      const defaultTitle =
+        String(callout).charAt(0).toUpperCase() + String(callout).slice(1);
+      console.log(i);
+
       // Get the title
       let titleNode = {
         type: "text",
-        value:
-          title ||
-          String(callout).charAt(0).toUpperCase() + String(callout).slice(1),
+        value: i == 1 ? defaultTitle : title,
       };
       let titleText = {
         type: "div",
