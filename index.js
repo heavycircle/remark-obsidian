@@ -113,7 +113,6 @@ export default function remarkObsidian() {
       // Check if we need default text
       const defaultTitle =
         String(callout).charAt(0).toUpperCase() + String(callout).slice(1);
-      console.log(i);
 
       // Get the title
       let titleNode = {
