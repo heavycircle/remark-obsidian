@@ -13,7 +13,7 @@ A [remark](https://github.com/remarkjs/remark) plugin to extend support to [Obsi
 
 ## What is this?
 
-This package is a [unified](unified) ([remark](https://github.com/remarkjs/remark)) package that extends Markdown to support [Obsidian flavors](https://help.obsidian.md/Editing+and+formatting/Obsidian+Flavored+Markdown).
+This package is a [unified](https://unifiedjs.com) ([remark](https://github.com/remarkjs/remark)) package that extends Markdown to support [Obsidian flavors](https://help.obsidian.md/Editing+and+formatting/Obsidian+Flavored+Markdown).
 
 The list of Supported Obsidian Markdown items are:
 
