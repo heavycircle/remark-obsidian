@@ -1,26 +1,53 @@
 {
   "name": "@heavycircle/remark-obsidian",
-  "version": "1.1.12",
-  "description": "A remark plugin to support Obsidian-flavored Markdown (renamed from @thecae/remark-obsidian)",
+  "version": "1.2.0",
+  "description": "A remark plugin for Obsidian callouts, comments and highlights",
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./obsidian.css": "./obsidian.css"
+  },
   "main": "index.js",
   "types": "index.d.ts",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "obsidian.css"
+  ],
+  "sideEffects": [
+    "*.css"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "bun@1.4.4",
   "scripts": {
-    "test": "bun test"
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "test": "bun test",
+    "check": "bun run format:check && bun run lint && bun run typecheck && bun run test",
+    "typecheck": "tsc --noEmit --strict --module nodenext --moduleResolution nodenext index.d.ts"
   },
   "dependencies": {
+    "@types/mdast": "^4.0.0",
     "lucide-react": "^0.424.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "unist-util-visit": "^5.0.0"
   },
   "keywords": [
-    "remark-plugin",
-    "remark",
-    "unified",
-    "plugin",
+    "callout",
     "markdown",
-    "obsidian"
+    "obsidian",
+    "obsidian-md",
+    "plugin",
+    "remark",
+    "remark-plugin",
+    "unified"
   ],
   "repository": {
     "type": "git",
@@ -29,8 +56,19 @@
   "author": "heavycircle",
   "license": "MIT",
   "devDependencies": {
-    "remark-breaks": "4",
-    "remark-parse": "11",
-    "unified": "11"
-  }
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "globals": "^16.0.0",
+    "prettier": "^3.0.0",
+    "rehype-raw": "^7.0.0",
+    "rehype-stringify": "^10.0.0",
+    "remark-breaks": "^4.0.0",
+    "remark-gfm": "^4.0.0",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.0.0",
+    "typescript": "^5.0.0",
+    "unified": "^11.0.0"
+  },
+  "homepage": "https://github.com/heavycircle/remark-obsidian#readme",
+  "bugs": "https://github.com/heavycircle/remark-obsidian/issues"
 }

@@ -59,159 +59,181 @@ icons.set("example", ListIcon);
 icons.set("quote", QuoteIcon);
 icons.set("cite", QuoteIcon);
 
-export default function remarkObsidian() {
-  function blockVisitor(node) {
-    /*
-    Callouts are blockquotes whose first line starts with [!type]. Anything
-    else (an empty quote, one that opens with code or formatting, or a type
-    with no icon) stays a plain blockquote instead of throwing: editors render
-    on every keystroke, so half-typed quotes have to be safe.
-    */
-    const first = node.children[0];
-    const lead = first?.type === "paragraph" ? first.children[0] : undefined;
-    if (lead?.type !== "text") return;
+const CALLOUT = /^\[!(\w+)\]([+-]?)[ \t]*/;
 
-    const calloutRegex = /^\[!(\w+)\]\s*(.*)/;
-    const match = lead.value.match(calloutRegex);
-    // Types are case-insensitive, so GitHub-style [!NOTE] works too
-    const callout = match?.[1].toLowerCase();
-    if (match && icons.has(callout)) {
-      let [, , title] = match;
+/*
+Pairs `delim` markers among a parent's inline children, even when the text
+between them crosses formatting or line breaks (`==**bold** text==`), and
+replaces each pair with `wrap(between)`. Markers are matched left to right,
+non-greedily, so `%%a%% kept %%b%%` keeps " kept ".
+*/
+function pairDelimiters(parent, delim, wrap) {
+  const children = parent.children;
+  let i = 0;
+  let start = 0;
+  const next = () => {
+    i++;
+    start = 0;
+  };
+  while (i < children.length) {
+    const open = children[i];
+    const at = open.type === "text" ? open.value.indexOf(delim, start) : -1;
+    if (at === -1) {
+      next();
+      continue;
+    }
 
-      // Get the icon
-      let iconMarkup = renderToStaticMarkup(createElement(icons.get(callout)));
-      let iconNode = {
-        type: "html",
-        value: iconMarkup,
-      };
-      let iconDiv = {
-        type: "div",
-        children: [iconNode],
-        data: {
-          hProperties: {
-            className: "callout-icon",
-          },
-        },
-      };
+    const from = at + delim.length;
+    let j = i;
+    let to = open.value.indexOf(delim, from);
+    while (to === -1 && ++j < children.length) {
+      if (children[j].type === "text") to = children[j].value.indexOf(delim);
+    }
+    // No closing marker after this one, so none later can pair either
+    if (to === -1) return;
+    // An empty pair (`====`) is left as typed; look past it in this node
+    if (i === j && to === from) {
+      start = to + delim.length;
+      continue;
+    }
 
-      // Get the end of the line (break between title and content)
-      let i = 0;
-      let children = node.children[0].children;
-      for (i = 0; i < children.length; ++i) {
-        // Check if we're at the break
-        if (children[i].type === "break") break;
-      }
+    const close = children[j];
+    const between =
+      i === j
+        ? [{ type: "text", value: open.value.slice(from, to) }]
+        : [
+            { type: "text", value: open.value.slice(from) },
+            ...children.slice(i + 1, j),
+            { type: "text", value: close.value.slice(0, to) },
+          ];
+    const replacement = [
+      { type: "text", value: open.value.slice(0, at) },
+      ...wrap(between.filter((n) => n.type !== "text" || n.value)),
+      { type: "text", value: close.value.slice(to + delim.length) },
+    ].filter((n) => n.type !== "text" || n.value);
 
-      // Check if we need default text
-      const defaultTitle =
-        String(callout).charAt(0).toUpperCase() + String(callout).slice(1);
+    children.splice(i, j - i + 1, ...replacement);
+    // Resume at the text after the pair, which may hold another one. Text
+    // before the pair has no marker, so nothing is skipped.
+    i = Math.max(i + replacement.length - 1, i);
+    start = 0;
+  }
+}
 
-      // Verbosely check for title
-      let text;
-      if (title) text = title;
-      else if (i == 1 && node.children[0].children.length != 1)
-        text = defaultTitle;
-      else text = title;
+// `%%comment%%` is removed. `==text==` becomes a highlight node that renders
+// as <span class="highlight">; it's a real node rather than raw HTML, so its
+// text stays escaped.
+const removeComment = () => [];
+const highlight = (children) => [
+  {
+    type: "highlight",
+    children,
+    data: { hName: "span", hProperties: { className: ["highlight"] } },
+  },
+];
 
-      // Get the title
-      let titleNode = {
-        type: "text",
-        value: text,
-      };
-      let titleText = {
-        type: "div",
-        children: [titleNode, ...node.children[0].children.slice(1, i)],
-        data: {
-          hProperties: {
-            className: "callout-title-inner",
-          },
-        },
-      };
-
-      // Change the title to a div including icon and rest of text
-      let titleDiv = {
-        type: "div",
-        children: [iconDiv, titleText],
-        data: {
-          hProperties: {
-            className: "callout-title font-bold",
-          },
-        },
-      };
-
-      // Get the content
-      let contentDiv = {
-        type: "div",
-        children: [
-          ...node.children[0].children.slice(i + 1),
-          ...node.children.slice(1),
-        ],
-        data: {
-          hProperties: {
-            className: "callout-content",
-          },
-        },
-      };
-
-      // reformat block quote as div and add children
-      node.type = "div";
-      node.data = {
-        hProperties: {
-          className: "callout",
-          callout: callout,
-        },
-      };
-      if (contentDiv.children.length > 0)
-        node.children = [titleDiv, contentDiv];
-      else node.children = [titleDiv];
+/*
+Splits a paragraph's inline children at its first line break: a break node
+(remark-breaks) or a newline inside a text node (plain remark).
+*/
+function splitFirstLine(children) {
+  for (let i = 0; i < children.length; i++) {
+    const node = children[i];
+    if (node.type === "break")
+      return [children.slice(0, i), children.slice(i + 1)];
+    if (node.type === "text" && node.value.includes("\n")) {
+      const at = node.value.indexOf("\n");
+      const head = { type: "text", value: node.value.slice(0, at) };
+      const tail = { type: "text", value: node.value.slice(at + 1) };
+      return [
+        [...children.slice(0, i), head],
+        [tail, ...children.slice(i + 1)].filter(
+          (n) => n.type !== "text" || n.value,
+        ),
+      ];
     }
   }
+  return [children, []];
+}
 
-  function commentVisitor(node) {
-    node.children = node.children.map((child) => {
-      if (child.type === "text") {
-        child.value = child.value.replace(/%%[^=]+%%/g, "");
-      }
-      return child;
+const div = (className, children, extra = {}) => ({
+  type: "div",
+  children,
+  data: { hName: "div", hProperties: { className, ...extra } },
+});
+
+/*
+Callouts are blockquotes whose first line starts with [!type]. Anything else
+(an empty quote, one that opens with code or formatting, or a type with no
+icon) stays a plain blockquote instead of throwing: editors render on every
+keystroke, so half-typed quotes have to be safe.
+*/
+function calloutVisitor(node) {
+  const first = node.children[0];
+  const lead = first?.type === "paragraph" ? first.children[0] : undefined;
+  if (lead?.type !== "text") return;
+
+  const match = lead.value.match(CALLOUT);
+  // Types are case-insensitive, so GitHub-style [!NOTE] works too
+  const callout = match?.[1].toLowerCase();
+  if (!match || !icons.has(callout)) return;
+  const fold = match[2];
+
+  const [titleLine, body] = splitFirstLine([
+    { type: "text", value: lead.value.slice(match[0].length) },
+    ...first.children.slice(1),
+  ]);
+  const title = titleLine.filter((n) => n.type !== "text" || n.value.trim());
+  const defaultTitle = callout.charAt(0).toUpperCase() + callout.slice(1);
+
+  const icon = {
+    type: "html",
+    value: renderToStaticMarkup(createElement(icons.get(callout))),
+  };
+  const titleDiv = div("callout-title font-bold", [
+    div("callout-icon", [icon]),
+    div(
+      "callout-title-inner",
+      title.length ? title : [{ type: "text", value: defaultTitle }],
+    ),
+  ]);
+  const content = [...body, ...node.children.slice(1)];
+
+  node.type = "div";
+  node.data = {
+    hName: "div",
+    hProperties: {
+      className: "callout",
+      callout,
+      // [!type]- starts folded and [!type]+ starts open in Obsidian; exposed
+      // for styling or scripts, since folding needs more than markup
+      ...(fold && { "data-callout-fold": fold }),
+    },
+  };
+  node.children = content.length
+    ? [titleDiv, div("callout-content", content)]
+    : [titleDiv];
+}
+
+// Code and math keep their markers literally
+const SKIP = new Set(["code", "inlineCode", "math", "inlineMath", "html"]);
+
+export default function remarkObsidian() {
+  return function transform(tree) {
+    // Comments and highlights first, so they also apply inside callouts,
+    // headings and table cells
+    visit(tree, (node) => {
+      if (SKIP.has(node.type)) return "skip";
+      if (!Array.isArray(node.children)) return;
+      pairDelimiters(node, "%%", removeComment);
+      pairDelimiters(node, "==", highlight);
     });
-  }
-
-  function highlightVisitor(node) {
-    visit(node, "text", (child, index, parent) => {
-      const regex = /==(.*?)==/g;
-      let match;
-      let parts = [];
-      let lastIndex = 0;
-
-      while ((match = regex.exec(child.value)) !== null) {
-        if (match.index > lastIndex) {
-          parts.push({
-            type: "text",
-            value: child.value.slice(lastIndex, match.index),
-          });
-        }
-        parts.push({
-          type: "html",
-          value: `<span class="highlight">${match[1]}</span>`,
-        });
-        lastIndex = regex.lastIndex;
-      }
-
-      if (lastIndex < child.value.length) {
-        parts.push({ type: "text", value: child.value.slice(lastIndex) });
-      }
-
-      if (parts.length > 0) {
-        parent.children.splice(index, 1, ...parts);
-      }
+    // A paragraph that was only a comment would render as an empty <p>
+    visit(tree, "paragraph", (node, index, parent) => {
+      if (node.children.length || !parent) return;
+      parent.children.splice(index, 1);
+      return index;
     });
-  }
-
-  function transform(tree) {
-    visit(tree, "blockquote", blockVisitor);
-    visit(tree, "paragraph", commentVisitor);
-    visit(tree, "paragraph", highlightVisitor);
-  }
-
-  return transform;
+    visit(tree, "blockquote", calloutVisitor);
+  };
 }

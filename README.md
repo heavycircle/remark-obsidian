@@ -1,85 +1,188 @@
 # remark-obsidian
 
-A [remark](https://github.com/remarkjs/remark) plugin to extend support to [Obsidian](https://obsidian.md/)-flavored Markdown.
+[![CI](https://github.com/heavycircle/remark-obsidian/actions/workflows/ci.yml/badge.svg)](https://github.com/heavycircle/remark-obsidian/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@heavycircle/remark-obsidian)](https://www.npmjs.com/package/@heavycircle/remark-obsidian)
+
+A [remark](https://github.com/remarkjs/remark) plugin for three pieces of [Obsidian-flavored Markdown](https://help.obsidian.md/Editing+and+formatting/Obsidian+Flavored+Markdown): callouts, comments, and highlights.
 
 ## Contents
 
-- [What is this?](#what-is-this)
+- [What it supports](#what-it-supports)
 - [Install](#install)
 - [Use](#use)
+- [Syntax](#syntax)
+- [Styling](#styling)
 - [API](#api)
 - [Security](#security)
+- [Compatibility](#compatibility)
+- [Contributing](#contributing)
 - [License](#license)
 
-## What is this?
+## What it supports
 
-This package is a [unified](https://unifiedjs.com) ([remark](https://github.com/remarkjs/remark)) package that extends Markdown to support [Obsidian flavors](https://help.obsidian.md/Editing+and+formatting/Obsidian+Flavored+Markdown).
+| Syntax            | Result                            |
+| ----------------- | --------------------------------- |
+| `> [!note] Title` | [Callouts](#callouts), with icons |
+| `%%hidden%%`      | [Comments](#comments), removed    |
+| `==highlighted==` | [Highlights](#highlights)         |
 
-The list of Supported Obsidian Markdown items are:
+Other Obsidian syntax is covered by existing plugins:
 
-| **Syntax**      | **Description**  |
-| --------------- | ---------------- |
-| `[[Link]]`      | Internal Links   |
-| `![[Link]]`     | Embed Files      |
-| `![[Link#^id]]` | Block References |
-| `^id`           | Defining a Block |
-| `%%Text%%`      | Comments         |
-| `~~Text~~`      | Strikethroughs   |
-| `==Text==`      | Highlights       |
-| ` ``` `         | Code Blocks      |
-| `- [ ]`         | Incomplete Task  |
-| `- [x]`         | Completed Task   |
-| `[!note]`       | Callouts         |
+| Syntax                         | Plugin                                                            |
+| ------------------------------ | ----------------------------------------------------------------- |
+| `~~strike~~`, tables, `- [ ]`  | [remark-gfm](https://github.com/remarkjs/remark-gfm)              |
+| `[[Internal link]]`            | [remark-wiki-link](https://github.com/landakram/remark-wiki-link) |
+| `$math$`                       | [remark-math](https://github.com/remarkjs/remark-math)            |
+| Line breaks without two spaces | [remark-breaks](https://github.com/remarkjs/remark-breaks)        |
 
-_Obsidian's website notes that not all these are fully Obsidian-specific. The main reason I wrote this plugin is for Link and Callout support_.
+Embeds (`![[file]]`) and block references (`^id`) aren't supported.
 
 ## Install
 
-This package is [ESM only](https://gist.github.com/sindresorhus/a39789f98801d908bbc7ff3ecc99d99c). In Node.js (version 16+), install using [`npm`](https://docs.npmjs.com/cli/install):
+This package is [ESM only](https://gist.github.com/sindresorhus/a39789f98801d908bbc7ff3ecc99d99c) and needs Node.js 20 or newer.
 
-```bash
+```sh
 npm install @heavycircle/remark-obsidian
+# or
+bun add @heavycircle/remark-obsidian
 ```
 
 ## Use
 
-Most definitions are self-explanatory from the above table. However, it is worth mentioning the various Callout syntaxes available.
+```js
+import remarkObsidian from "@heavycircle/remark-obsidian";
+import rehypeStringify from "rehype-stringify";
+import remarkParse from "remark-parse";
+import remarkRehype from "remark-rehype";
+import { unified } from "unified";
 
-Use the [Obsidian Callouts](https://help.obsidian.md/Editing+and+formatting/Callouts) guide for further instruction.
+const html = await unified()
+  .use(remarkParse)
+  .use(remarkObsidian)
+  // Callout icons are inline SVG: allow raw HTML through to the output
+  .use(remarkRehype, { allowDangerousHtml: true })
+  .use(rehypeStringify, { allowDangerousHtml: true })
+  .process("> [!tip] Hello\n> This is a ==callout==. %%Not shown.%%");
+```
 
-Callout types are case-insensitive (`[!NOTE]` works too). A quote whose type has no icon, or whose first line doesn't start with `[!type]`, renders as a plain blockquote.
+```html
+<div class="callout" callout="tip">
+  <div class="callout-title font-bold">
+    <div class="callout-icon"><svg>…</svg></div>
+    <div class="callout-title-inner">Hello</div>
+  </div>
+  <div class="callout-content">
+    This is a <span class="highlight">callout</span>.
+  </div>
+</div>
+```
 
-Run [remark-breaks](https://www.npmjs.com/package/remark-breaks) before this plugin: it separates a callout's title line from its body.
+With [react-markdown](https://github.com/remarkjs/react-markdown), add the plugin to `remarkPlugins` and [rehype-raw](https://github.com/rehypejs/rehype-raw) to `rehypePlugins`.
 
-This plugin is best used with [remark-gfm](https://www.npmjs.com/package/remark-gfm), [rehype-raw](https://www.npmjs.com/package/rehype-raw), and [remark-wiki-link-plus](https://www.npmjs.com/package/remark-wiki-link-plus).
+> [!IMPORTANT]
+> Without `allowDangerousHtml` (or rehype-raw), callouts still render but their icons are silently dropped.
+
+## Syntax
+
+### Callouts
+
+A blockquote whose first line starts with `[!type]` becomes a callout. The rest of that line is its title; later lines are its body.
+
+```md
+> [!warning] Mind the gap
+> Body text, **formatting**, lists and nested callouts all work.
+```
+
+- **No title:** `> [!tip]` alone gets one from its type ("Tip").
+- **Case-insensitive types:** GitHub-style `[!NOTE]` works.
+- **Fold markers:** `[!faq]-` (folded) and `[!faq]+` (open) set `data-callout-fold="-"` or `"+"` on the callout. Folding itself is up to your CSS or JavaScript.
+- **Plain blockquotes:** a quote with an unknown type, or whose first line doesn't start with `[!type]`, stays a normal blockquote.
+
+| Type       | Aliases                |
+| ---------- | ---------------------- |
+| `note`     |                        |
+| `abstract` | `summary`, `tldr`      |
+| `info`     |                        |
+| `todo`     |                        |
+| `tip`      | `hint`, `important`    |
+| `success`  | `check`, `done`        |
+| `question` | `help`, `faq`          |
+| `warning`  | `caution`, `attention` |
+| `failure`  | `fail`, `missing`      |
+| `danger`   | `error`                |
+| `bug`      |                        |
+| `example`  |                        |
+| `quote`    | `cite`                 |
+
+### Comments
+
+`%%text%%` is removed from the output. Comments can span formatting and lines; a paragraph that only held a comment is removed entirely.
+
+### Highlights
+
+`==text==` becomes `<span class="highlight">text</span>`. Highlights can span formatting (`==**bold** text==`). An empty `====` or an unclosed `==` is left as typed.
+
+Comments and highlights work in paragraphs, headings, table cells, list items, and callout titles and bodies. Code and math keep them literally.
+
+## Styling
+
+Import the stylesheet once, for example from your global CSS:
+
+```css
+@import "@heavycircle/remark-obsidian/obsidian.css";
+```
+
+It works out of the box with the colors of Obsidian's default theme. To theme it, set any of these custom properties; yours always win.
+
+| Property                                                                                                                                                                                  | Default                  |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| `--callout-note`, `--callout-info`, `--callout-todo`, `--callout-default`                                                                                                                 | `8, 109, 221`            |
+| `--callout-summary`, `--callout-tip`                                                                                                                                                      | `0, 191, 188`            |
+| `--callout-success`                                                                                                                                                                       | `8, 185, 78`             |
+| `--callout-question`, `--callout-warning`                                                                                                                                                 | `236, 117, 0`            |
+| `--callout-fail`, `--callout-error`, `--callout-bug`                                                                                                                                      | `233, 49, 71`            |
+| `--callout-example`                                                                                                                                                                       | `120, 82, 238`           |
+| `--callout-quote`                                                                                                                                                                         | `158, 158, 158`          |
+| `--callout-padding`                                                                                                                                                                       | `12px 12px 12px 24px`    |
+| `--callout-radius`                                                                                                                                                                        | `4px`                    |
+| `--callout-border-width`, `--callout-border-opacity`                                                                                                                                      | `0px`, `0.25`            |
+| `--callout-title-color`, `--callout-title-size`, `--callout-title-weight`, `--callout-title-padding`, `--callout-content-padding`, `--callout-content-background`, `--callout-blend-mode` | inherit or none          |
+| `--text-highlight-bg`                                                                                                                                                                     | `rgba(255, 208, 0, 0.4)` |
+
+Colors are `r, g, b` triplets. Callout types are selected with `.callout[callout="tip"]`.
 
 ## API
 
-This package exports no identifiers. The default export is `remarkObsidian`.
+The default export is `remarkObsidian`. It takes no options.
 
-#### `unified().use(remarkObsidian)`
-
-Provides support for Obsidian-flavored Markdown, including tables, callouts, links, embeds, and more.
-
-To get full use of the package, ensure you include Obsidian-compliant variables. Then, import the CSS file inside the `global.css` file:
-
-```css
-@import "@heavycircle/remark-obsidian/obsidian.module.css";
+```js
+unified().use(remarkObsidian);
 ```
 
-###### Parameters
+Types are included (`Plugin<[], Root>` from unified and mdast).
 
-There are no parameters.
+## Security
 
-###### Returns
+The plugin adds trusted markup only: callout wrappers, classes, and its own icon SVGs (as raw HTML nodes, hence `allowDangerousHtml`). Text from the Markdown, including inside highlights, stays escaped.
 
-Transform ([`Transformer`](https://github.com/unifiedjs/unified#transformer)).
+`allowDangerousHtml` and rehype-raw also pass through any raw HTML written in the Markdown itself. If you render untrusted Markdown, run [rehype-sanitize](https://github.com/rehypejs/rehype-sanitize) after rehype-raw and allow the classes above.
 
-# Security
+## Compatibility
 
-Use of remark-videos does not involve [rehype](https://github.com/rehypejs/rehype) ([hast](https://github.com/syntax-tree/hast)) or user content so there are no openings for [cross-site scripting (XSS)](https://en.wikipedia.org/wiki/Cross-site_scripting) attacks.
+- **Node.js:** 20 or newer, ESM only.
+- **Ecosystem:** unified 11 and the remark and rehype versions that go with it (remark-parse 11, remark-rehype 11).
+- **CI:** tested on Node 20, 22 and 24.
 
+## Contributing
 
-# License
+```sh
+bun install
+bun run check   # format check, lint, type check, tests
+bun run format  # fix formatting
+```
 
-[MIT](LICENSE) &copy; heavycircle
+Releases are published from GitHub: bump `version` in `package.json`, merge, then publish a GitHub release tagged `vX.Y.Z`. The release workflow runs CI and publishes to npm with provenance.
+
+## License
+
+[MIT](LICENSE) © heavycircle
