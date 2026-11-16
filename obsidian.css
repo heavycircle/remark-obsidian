@@ -1,3 +1,42 @@
+/*
+Defaults from Obsidian's default theme, so callouts are styled out of the box.
+:where() has zero specificity: any definition of these in your own CSS wins,
+wherever it's declared. Colors are "r, g, b" triplets.
+*/
+:where(:root) {
+  --callout-default: 8, 109, 221;
+  --callout-note: 8, 109, 221;
+  --callout-info: 8, 109, 221;
+  --callout-todo: 8, 109, 221;
+  --callout-summary: 0, 191, 188;
+  --callout-tip: 0, 191, 188;
+  --callout-success: 8, 185, 78;
+  --callout-question: 236, 117, 0;
+  --callout-warning: 236, 117, 0;
+  --callout-fail: 233, 49, 71;
+  --callout-error: 233, 49, 71;
+  --callout-bug: 233, 49, 71;
+  --callout-example: 120, 82, 238;
+  --callout-quote: 158, 158, 158;
+
+  --callout-border-width: 0px;
+  --callout-border-opacity: 0.25;
+  --callout-radius: 4px;
+  --callout-padding: 12px 12px 12px 24px;
+  --callout-blend-mode: normal;
+  --callout-title-color: inherit;
+  --callout-title-padding: 0;
+  --callout-title-size: inherit;
+  --callout-title-weight: inherit;
+  --callout-content-padding: 0;
+  --callout-content-background: transparent;
+
+  --size-4-1: 4px;
+  --line-height-tight: 1.3;
+  --text-normal: inherit;
+  --text-highlight-bg: rgba(255, 208, 0, 0.4);
+}
+
 .callout {
   overflow: hidden;
   border-style: solid;

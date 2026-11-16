@@ -1,0 +1,41 @@
+name: Release
+
+# Publishing a GitHub release tagged vX.Y.Z publishes that version to npm.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    needs: ci
+    runs-on: ubuntu-latest
+    # Required reviewers or tag rules can be added to this environment in the
+    # repo settings; npm's trusted publisher entry names it too
+    environment: npm
+    permissions:
+      contents: read
+      # npm trusted publishing (OIDC): no token is stored, and the package
+      # gets a provenance statement linking it to this workflow run
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: Tag must match package.json
+        run: |
+          version="v$(node -p 'require("./package.json").version')"
+          if [ "$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Release tag $GITHUB_REF_NAME doesn't match package.json ($version)"
+            exit 1
+          fi
+      # Trusted publishing needs npm 11.5.1 or newer
+      - run: npm install -g npm@^11.5.1
+      - run: npm publish --access public
