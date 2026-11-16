@@ -24,7 +24,7 @@ jobs:
       # gets a provenance statement linking it to this workflow run
       id-token: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 24
