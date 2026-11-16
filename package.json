@@ -56,9 +56,9 @@
   "author": "heavycircle",
   "license": "MIT",
   "devDependencies": {
-    "@eslint/js": "^9.0.0",
-    "eslint": "^9.0.0",
-    "globals": "^16.0.0",
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.14.0",
+    "globals": "^17.14.0",
     "prettier": "^3.0.0",
     "rehype-raw": "^7.0.0",
     "rehype-stringify": "^10.0.0",
@@ -66,7 +66,7 @@
     "remark-gfm": "^4.0.0",
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.0.0",
-    "typescript": "^5.0.0",
+    "typescript": "^7.0.2",
     "unified": "^11.0.0"
   },
   "homepage": "https://github.com/heavycircle/remark-obsidian#readme",
