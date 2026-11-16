@@ -59,9 +59,8 @@ import { unified } from "unified";
 const html = await unified()
   .use(remarkParse)
   .use(remarkObsidian)
-  // Callout icons are inline SVG: allow raw HTML through to the output
-  .use(remarkRehype, { allowDangerousHtml: true })
-  .use(rehypeStringify, { allowDangerousHtml: true })
+  .use(remarkRehype)
+  .use(rehypeStringify)
   .process("> [!tip] Hello\n> This is a ==callout==. %%Not shown.%%");
 ```
 
@@ -77,10 +76,9 @@ const html = await unified()
 </div>
 ```
 
-With [react-markdown](https://github.com/remarkjs/react-markdown), add the plugin to `remarkPlugins` and [rehype-raw](https://github.com/rehypejs/rehype-raw) to `rehypePlugins`.
+With [react-markdown](https://github.com/remarkjs/react-markdown), add the plugin to `remarkPlugins`.
 
-> [!IMPORTANT]
-> Without `allowDangerousHtml` (or rehype-raw), callouts still render but their icons are silently dropped.
+Icons are inline SVG elements, not raw HTML, so they need neither `allowDangerousHtml` nor [rehype-raw](https://github.com/rehypejs/rehype-raw). Both still work if you use them for other reasons.
 
 ## Syntax
 
@@ -163,9 +161,32 @@ Types are included (`Plugin<[], Root>` from unified and mdast).
 
 ## Security
 
-The plugin adds trusted markup only: callout wrappers, classes, and its own icon SVGs (as raw HTML nodes, hence `allowDangerousHtml`). Text from the Markdown, including inside highlights, stays escaped.
+The plugin adds trusted markup only: callout wrappers, classes, and its own icon SVGs, all as syntax tree nodes rather than raw HTML. Text from the Markdown, including inside highlights, stays escaped.
 
-`allowDangerousHtml` and rehype-raw also pass through any raw HTML written in the Markdown itself. If you render untrusted Markdown, run [rehype-sanitize](https://github.com/rehypejs/rehype-sanitize) after rehype-raw and allow the classes above.
+If you render untrusted Markdown with `allowDangerousHtml` or rehype-raw, raw HTML written in the Markdown itself passes through. Run [rehype-sanitize](https://github.com/rehypejs/rehype-sanitize) last. Its default schema strips the callout classes and the icons, so allow those:
+
+```js
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
+
+const schema = {
+  ...defaultSchema,
+  tagNames: [...defaultSchema.tagNames, "svg", "path", "rect", "circle"],
+  attributes: {
+    ...defaultSchema.attributes,
+    // plus className and callout on div, className on span, for the markup above
+    svg: [
+      ...["xmlns", "width", "height", "viewBox", "fill", "stroke"],
+      ...["strokeWidth", "strokeLinecap", "strokeLinejoin"],
+      ...["className", "ariaHidden"],
+    ],
+    path: ["d"],
+    rect: ["width", "height", "x", "y", "rx", "ry"],
+    circle: ["cx", "cy", "r"],
+  },
+};
+```
+
+The icons are Lucide icons ([ISC](https://github.com/lucide-icons/lucide/blob/main/LICENSE)); the notice is in `icons.js`.
 
 ## Compatibility
 

@@ -12,8 +12,8 @@ const html = String(
   unified()
     .use(remarkParse)
     .use(remarkObsidian)
-    .use(remarkRehype, { allowDangerousHtml: true })
-    .use(rehypeStringify, { allowDangerousHtml: true })
+    .use(remarkRehype)
+    .use(rehypeStringify)
     .processSync("> [!tip] Hello\n> body ==hl== %%gone%%"),
 );
 
@@ -21,6 +21,7 @@ const expect = (ok, what) => {
   if (!ok) throw new Error(`smoke test failed: ${what}\n${html}`);
 };
 expect(html.includes('callout="tip"'), "callout rendered");
+expect(html.includes('class="lucide lucide-flame"'), "icon without raw HTML");
 expect(html.includes('<span class="highlight">hl</span>'), "highlight");
 expect(!html.includes("gone"), "comment removed");
 

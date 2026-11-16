@@ -6,17 +6,8 @@ updates:
       interval: weekly
     labels: [dependencies]
     groups:
-      # react and react-dom must match; bumped apart they fail to render
-      react:
-        patterns: [react, react-dom]
       dev-tooling:
         dependency-type: development
-    ignore:
-      # React leaves the plugin in #7; no point chasing majors until then
-      - dependency-name: react
-        update-types: [version-update:semver-major]
-      - dependency-name: react-dom
-        update-types: [version-update:semver-major]
   - package-ecosystem: github-actions
     directory: /
     schedule:
