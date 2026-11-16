@@ -47,6 +47,10 @@ Most definitions are self-explanatory from the above table. However, it is worth
 
 Use the [Obsidian Callouts](https://help.obsidian.md/Editing+and+formatting/Callouts) guide for further instruction.
 
+Callout types are case-insensitive (`[!NOTE]` works too). A quote whose type has no icon, or whose first line doesn't start with `[!type]`, renders as a plain blockquote.
+
+Run [remark-breaks](https://www.npmjs.com/package/remark-breaks) before this plugin: it separates a callout's title line from its body.
+
 This plugin is best used with [remark-gfm](https://www.npmjs.com/package/remark-gfm), [rehype-raw](https://www.npmjs.com/package/rehype-raw), and [remark-wiki-link-plus](https://www.npmjs.com/package/remark-wiki-link-plus).
 
 ## API

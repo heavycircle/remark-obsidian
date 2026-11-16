@@ -1,12 +1,12 @@
 {
   "name": "@heavycircle/remark-obsidian",
-  "version": "1.1.11",
+  "version": "1.1.12",
   "description": "A remark plugin to support Obsidian-flavored Markdown (renamed from @thecae/remark-obsidian)",
   "type": "module",
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "bun test"
   },
   "dependencies": {
     "lucide-react": "^0.424.0",
@@ -27,5 +27,10 @@
     "url": "git+https://github.com/heavycircle/remark-obsidian.git"
   },
   "author": "heavycircle",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "remark-breaks": "4",
+    "remark-parse": "11",
+    "unified": "11"
+  }
 }

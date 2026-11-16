@@ -59,32 +59,24 @@ icons.set("example", ListIcon);
 icons.set("quote", QuoteIcon);
 icons.set("cite", QuoteIcon);
 
-// Get first text from a blockquote
-function getFirstText(node) {
-  if (!node) return undefined;
-  if (node.type === "text") return node.value;
-  if (Array.isArray(node.children)) {
-    for (const child of node.children) {
-      const result = getFirstText(child);
-      if (result) return result;
-    }
-  }
-  return undefined;
-}
-
 export default function remarkObsidian() {
   function blockVisitor(node) {
     /*
-    Callouts are blockquotes denoted by [!type].
-    Blockquotes have paragraph children, who have text children.
+    Callouts are blockquotes whose first line starts with [!type]. Anything
+    else (an empty quote, one that opens with code or formatting, or a type
+    with no icon) stays a plain blockquote instead of throwing: editors render
+    on every keystroke, so half-typed quotes have to be safe.
     */
-    const quote = getFirstText(node);
+    const first = node.children[0];
+    const lead = first?.type === "paragraph" ? first.children[0] : undefined;
+    if (lead?.type !== "text") return;
 
     const calloutRegex = /^\[!(\w+)\]\s*(.*)/;
-    const match = quote.match(calloutRegex);
-    if (match) {
-      // Get the callout type and title
-      let [, callout, title] = match;
+    const match = lead.value.match(calloutRegex);
+    // Types are case-insensitive, so GitHub-style [!NOTE] works too
+    const callout = match?.[1].toLowerCase();
+    if (match && icons.has(callout)) {
+      let [, , title] = match;
 
       // Get the icon
       let iconMarkup = renderToStaticMarkup(createElement(icons.get(callout)));
