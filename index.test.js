@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import rehypeRaw from "rehype-raw";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeStringify from "rehype-stringify";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
@@ -16,12 +17,14 @@ const render = (md, { breaks = true } = {}) => {
     processor
       .use(remarkGfm)
       .use(remarkObsidian)
-      .use(remarkRehype, { allowDangerousHtml: true })
-      .use(rehypeRaw)
+      .use(remarkRehype)
       .use(rehypeStringify)
       .processSync(md),
   ).replace(/<svg[\s\S]*?<\/svg>/g, "<svg/>");
 };
+
+const FLAME =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-flame" aria-hidden="true"><path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4"></path></svg>';
 
 const title = (html) => html.match(/callout-title-inner">(.*?)<\/div>/)?.[1];
 const content = (html) =>
@@ -34,6 +37,59 @@ describe("callouts", () => {
     expect(html).toContain('<div class="callout-icon"><svg/></div>');
     expect(title(html)).toBe("Careful");
     expect(content(html)).toBe("Body text");
+  });
+
+  test("icons are inline SVG without raw HTML (#7)", () => {
+    const html = String(
+      unified()
+        .use(remarkParse)
+        .use(remarkObsidian)
+        .use(remarkRehype)
+        .use(rehypeStringify)
+        .processSync("> [!tip] Hi"),
+    );
+    expect(html).toContain(`<div class="callout-icon">${FLAME}</div>`);
+  });
+
+  test("icons survive rehype-raw (react-markdown setups)", () => {
+    const html = String(
+      unified()
+        .use(remarkParse)
+        .use(remarkObsidian)
+        .use(remarkRehype, { allowDangerousHtml: true })
+        .use(rehypeRaw)
+        .use(rehypeStringify)
+        .processSync("> [!tip] Hi"),
+    );
+    expect(html).toContain(`<div class="callout-icon">${FLAME}</div>`);
+  });
+
+  test("icons survive rehype-sanitize with the README's schema", () => {
+    const schema = {
+      ...defaultSchema,
+      tagNames: [...defaultSchema.tagNames, "svg", "path", "rect", "circle"],
+      attributes: {
+        ...defaultSchema.attributes,
+        svg: [
+          ...["xmlns", "width", "height", "viewBox", "fill", "stroke"],
+          ...["strokeWidth", "strokeLinecap", "strokeLinejoin"],
+          ...["className", "ariaHidden"],
+        ],
+        path: ["d"],
+        rect: ["width", "height", "x", "y", "rx", "ry"],
+        circle: ["cx", "cy", "r"],
+      },
+    };
+    const html = String(
+      unified()
+        .use(remarkParse)
+        .use(remarkObsidian)
+        .use(remarkRehype)
+        .use(rehypeSanitize, schema)
+        .use(rehypeStringify)
+        .processSync("> [!tip] Hi"),
+    );
+    expect(html).toContain(FLAME);
   });
 
   test("no title: named after the type", () => {

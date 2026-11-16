@@ -1,63 +1,5 @@
 import { visit } from "unist-util-visit";
-import {
-  FlameIcon,
-  InfoIcon,
-  PencilIcon,
-  ClipboardListIcon,
-  CheckCircle2Icon,
-  CheckIcon,
-  HelpCircleIcon,
-  ListIcon,
-  QuoteIcon,
-  AlertTriangleIcon,
-  XIcon,
-  ZapIcon,
-  BugIcon,
-} from "lucide-react";
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
-
-const icons = new Map();
-// notes
-icons.set("note", PencilIcon);
-// abstracts
-icons.set("abstract", ClipboardListIcon);
-icons.set("summary", ClipboardListIcon);
-icons.set("tldr", ClipboardListIcon);
-// info
-icons.set("info", InfoIcon);
-// to do
-icons.set("todo", CheckCircle2Icon);
-// tip
-icons.set("tip", FlameIcon);
-icons.set("hint", FlameIcon);
-icons.set("important", FlameIcon);
-// success
-icons.set("success", CheckIcon);
-icons.set("check", CheckIcon);
-icons.set("done", CheckIcon);
-// question
-icons.set("question", HelpCircleIcon);
-icons.set("help", HelpCircleIcon);
-icons.set("faq", HelpCircleIcon);
-// warning
-icons.set("warning", AlertTriangleIcon);
-icons.set("caution", AlertTriangleIcon);
-icons.set("attention", AlertTriangleIcon);
-// failure
-icons.set("failure", XIcon);
-icons.set("fail", XIcon);
-icons.set("missing", XIcon);
-// danger
-icons.set("danger", ZapIcon);
-icons.set("error", ZapIcon);
-// bug
-icons.set("bug", BugIcon);
-// example
-icons.set("example", ListIcon);
-// quote
-icons.set("quote", QuoteIcon);
-icons.set("cite", QuoteIcon);
+import { iconNode, icons } from "./icons.js";
 
 const CALLOUT = /^\[!(\w+)\]([+-]?)[ \t]*/;
 
@@ -270,12 +212,8 @@ function calloutVisitor(node) {
   const title = titleLine.filter((n) => n.type !== "text" || n.value.trim());
   const defaultTitle = callout.charAt(0).toUpperCase() + callout.slice(1);
 
-  const icon = {
-    type: "html",
-    value: renderToStaticMarkup(createElement(icons.get(callout))),
-  };
   const titleDiv = div("callout-title font-bold", [
-    div("callout-icon", [icon]),
+    div("callout-icon", [iconNode(icons.get(callout))]),
     div(
       "callout-title-inner",
       title.length ? title : [{ type: "text", value: defaultTitle }],
