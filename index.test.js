@@ -159,6 +159,45 @@ describe("comments", () => {
   test("an unclosed marker is left as typed", () => {
     expect(render("a %%b")).toBe("<p>a %%b</p>");
   });
+
+  test("may wrap several paragraphs (#6)", () => {
+    const md = "before\n\n%%\nhidden one\n\nhidden two\n%%\n\nafter";
+    expect(render(md)).toBe("<p>before</p>\n<p>after</p>");
+    expect(render(md, { breaks: false })).toBe("<p>before</p>\n<p>after</p>");
+  });
+
+  test("keep the text before the opener and after the closer", () => {
+    expect(render("kept %%\nhidden\n\nhidden %% also kept")).toBe(
+      "<p>kept</p>\n<p>also kept</p>",
+    );
+  });
+
+  test("may wrap lists and code blocks", () => {
+    expect(render("%%\n\n- a\n\n```\ncode\n```\n\n%%\n\nafter")).toBe(
+      "<p>after</p>",
+    );
+  });
+
+  test("a closer right after a list hides the list", () => {
+    expect(render("%%\n- a\n- b\n%%\n\nafter")).toBe("<p>after</p>");
+  });
+
+  test("comments after a block closer still pair", () => {
+    expect(render("%%\nhidden\n\n%% kept %%x%% too")).toBe("<p>kept  too</p>");
+  });
+
+  test("may wrap paragraphs in a callout body", () => {
+    const html = render(
+      "> [!note]\n> shown\n>\n> %%\n> hidden\n>\n> hidden\n> %%",
+    );
+    expect(content(html)).toContain("shown");
+    expect(html).not.toContain("hidden");
+    expect(html).not.toContain("%%");
+  });
+
+  test("an unclosed marker across paragraphs is left as typed", () => {
+    expect(render("%%\none\n\ntwo")).toContain("%%");
+  });
 });
 
 describe("highlights", () => {

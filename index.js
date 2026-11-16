@@ -120,6 +120,90 @@ function pairDelimiters(parent, delim, wrap) {
   }
 }
 
+const COMMENT = "%%";
+const hasComment = (n) => n.type === "text" && n.value.includes(COMMENT);
+const markers = (node) =>
+  node.type === "paragraph"
+    ? node.children
+        .filter((n) => n.type === "text")
+        .reduce((sum, n) => sum + n.value.split(COMMENT).length - 1, 0)
+    : 0;
+const isBlank = (n) =>
+  n.type === "break" || (n.type === "text" && !n.value.trim());
+
+function keepBeforeLastMarker(paragraph) {
+  const children = paragraph.children;
+  const at = children.findLastIndex(hasComment);
+  const { value } = children[at];
+  const kept = [
+    ...children.slice(0, at),
+    {
+      type: "text",
+      value: value.slice(0, value.lastIndexOf(COMMENT)).trimEnd(),
+    },
+  ];
+  while (kept.length && isBlank(kept.at(-1))) kept.pop();
+  paragraph.children = kept;
+}
+
+function keepAfterFirstMarker(paragraph) {
+  const children = paragraph.children;
+  const at = children.findIndex(hasComment);
+  const { value } = children[at];
+  const kept = [
+    {
+      type: "text",
+      value: value.slice(value.indexOf(COMMENT) + COMMENT.length).trimStart(),
+    },
+    ...children.slice(at + 1),
+  ];
+  while (kept.length && isBlank(kept[0])) kept.shift();
+  paragraph.children = kept;
+}
+
+// Path from `node` down to the first paragraph holding a marker
+function pathToMarker(node) {
+  if (node.type === "paragraph") return markers(node) ? [node] : undefined;
+  if (SKIP.has(node.type) || !node.children) return;
+  for (const child of node.children) {
+    const path = pathToMarker(child);
+    if (path) return [node, ...path];
+  }
+}
+
+/*
+A comment can wrap whole blocks: %% opens in one paragraph and closes in a
+later sibling, or inside one (a `%%` line right after a list is a lazy
+continuation of its last item). Everything between is removed, keeping the
+text before the opener and after the closer. Runs before pairDelimiters so
+the closing paragraph's remaining markers pair among themselves.
+*/
+function removeBlockComments(parent) {
+  const children = parent.children;
+  for (let i = 0; i < children.length; i++) {
+    // Markers pair left to right, so an odd count leaves the last one open
+    if (markers(children[i]) % 2 === 0) continue;
+    let path;
+    let j = i;
+    while (!path && ++j < children.length) path = pathToMarker(children[j]);
+    // No closer in a later block, so the marker stays as typed
+    if (!path) return;
+
+    keepBeforeLastMarker(children[i]);
+    keepAfterFirstMarker(path.at(-1));
+    for (let d = 0; d < path.length - 1; d++) {
+      const kids = path[d].children;
+      kids.splice(0, kids.indexOf(path[d + 1]));
+    }
+    for (let d = path.length - 1; d > 0 && !path[d].children.length; d--) {
+      const kids = path[d - 1].children;
+      kids.splice(kids.indexOf(path[d]), 1);
+    }
+    children.splice(i + 1, j - i - 1);
+    if (!path[0].children.length) children.splice(i + 1, 1);
+  }
+}
+
 // `%%comment%%` is removed. `==text==` becomes a highlight node that renders
 // as <span class="highlight">; it's a real node rather than raw HTML, so its
 // text stays escaped.
@@ -225,6 +309,7 @@ export default function remarkObsidian() {
     visit(tree, (node) => {
       if (SKIP.has(node.type)) return "skip";
       if (!Array.isArray(node.children)) return;
+      removeBlockComments(node);
       pairDelimiters(node, "%%", removeComment);
       pairDelimiters(node, "==", highlight);
     });
