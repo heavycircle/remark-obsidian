@@ -190,13 +190,45 @@ Colors are `r, g, b` triplets. Callout types are selected with `.callout[data-ca
 
 ## API
 
-The default export is `remarkObsidian`. It takes no options.
+The default export is `remarkObsidian`, which takes an optional `options` object.
 
 ```js
-unified().use(remarkObsidian);
+unified().use(remarkObsidian, options);
 ```
 
-Types are included (`Plugin<[], Root>` from unified and mdast).
+Types are included (`Plugin<[Options?], Root>`, plus the `Options`, `CalloutDefinition` and `IconNode` types).
+
+### `options.callouts`
+
+Adds, overrides, aliases or turns off callout types. Keys are type names (letters, digits and `_`, case-insensitive).
+
+```js
+import { FlaskConical } from "lucide";
+
+unified().use(remarkObsidian, {
+  callouts: {
+    lab: { icon: FlaskConical, title: "Lab" }, // a new type
+    tip: { title: "Pro tip" }, // override a built-in; its aliases follow
+    experiment: "lab", // an alias of any type, built-in or custom
+    quote: false, // turn a built-in type (and its aliases) off
+  },
+});
+```
+
+- **`icon`:** a [Lucide](https://lucide.dev/guide/packages/lucide) icon node from the `lucide` package, rendered like the built-in icons, or a hast `<svg>` element, used as given. Raw SVG strings aren't accepted, since they would need raw HTML. An override keeps the built-in icon unless you set one; a new type defaults to the note icon, as in Obsidian.
+- **`title`:** the title of callouts that don't write one. Without it, the title is the type name as written (`[!lab]` gives "Lab").
+- **Aliases** behave like the built-in ones: `[!experiment]` gets lab's icon but keeps `data-callout="experiment"` and its own default title.
+
+Invalid options (a bad name, a raw SVG string, an alias to an unknown type or an alias cycle) throw a `TypeError` when the processor is set up.
+
+Give a new type a color with its `data-callout` selector, one per name or alias:
+
+```css
+.callout[data-callout="lab"],
+.callout[data-callout="experiment"] {
+  --callout-color: 0, 150, 136;
+}
+```
 
 ## Security
 
@@ -227,6 +259,8 @@ const schema = {
   },
 };
 ```
+
+A custom hast icon that uses other elements or attributes needs them in the schema too.
 
 The icons are Lucide icons ([ISC](https://github.com/lucide-icons/lucide/blob/main/LICENSE)); the notice is in `icons.js`.
 

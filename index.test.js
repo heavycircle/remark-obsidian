@@ -6,6 +6,7 @@ import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
+import { FlaskConical } from "lucide";
 import { unified } from "unified";
 import remarkObsidian from "./index.js";
 
@@ -350,5 +351,128 @@ describe("highlights", () => {
 
   test("code keeps them literally", () => {
     expect(render("`==x==`")).toBe("<p><code>==x==</code></p>");
+  });
+});
+
+describe("options (#10)", () => {
+  const withOptions = (options, md) =>
+    String(
+      unified()
+        .use(remarkParse)
+        .use(remarkObsidian, options)
+        .use(remarkRehype)
+        .use(rehypeStringify)
+        .processSync(md),
+    );
+  const icon = (html) => html.match(/callout-icon">(<svg[\s\S]*?<\/svg>)/)?.[1];
+  const builtIn = (md) => icon(withOptions(undefined, md));
+  const lab = { icon: FlaskConical, title: "Lab" };
+
+  test("a new type with a Lucide icon and a default title", () => {
+    const html = withOptions({ callouts: { lab } }, "> [!lab]\n> Body");
+    expect(html).toStartWith('<div class="callout" data-callout="lab">');
+    expect(title(html)).toBe("Lab");
+    expect(icon(html)).toStartWith('<svg xmlns="http://www.w3.org/2000/svg"');
+    expect(icon(html)).toContain('class="lucide"');
+    expect(icon(html)).toContain('<path d="M6.453 15h11.094"></path>');
+    expect(title(withOptions({ callouts: { lab } }, "> [!lab] Mine"))).toBe(
+      "Mine",
+    );
+  });
+
+  test("a new type without an icon gets the pencil, titled by its name", () => {
+    const html = withOptions({ callouts: { lab: {} } }, "> [!lab]");
+    expect(icon(html)).toBe(builtIn("> [!note]"));
+    expect(title(html)).toBe("Lab");
+  });
+
+  test("type names are case-insensitive", () => {
+    const html = withOptions({ callouts: { LAB: lab } }, "> [!Lab]");
+    expect(html).toContain('data-callout="lab"');
+  });
+
+  test("overriding a built-in changes its aliases too", () => {
+    const options = { callouts: { tip: { icon: FlaskConical } } };
+    for (const type of ["tip", "hint", "important"])
+      expect(icon(withOptions(options, `> [!${type}]`))).toContain("M6.453");
+  });
+
+  test("overriding only the title keeps the icon", () => {
+    const html = withOptions(
+      { callouts: { tip: { title: "Pro tip" } } },
+      "> [!tip]",
+    );
+    expect(title(html)).toBe("Pro tip");
+    expect(icon(html)).toBe(builtIn("> [!tip]"));
+    expect(
+      title(
+        withOptions({ callouts: { tip: { title: "Pro tip" } } }, "> [!hint]"),
+      ),
+    ).toBe("Hint");
+  });
+
+  test("aliases, including chains and types defined later", () => {
+    const options = {
+      callouts: { trial: "experiment", experiment: "lab", lab },
+    };
+    const html = withOptions(options, "> [!trial]");
+    expect(html).toContain('data-callout="trial"');
+    expect(title(html)).toBe("Trial");
+    expect(icon(html)).toContain("M6.453");
+    expect(
+      icon(withOptions({ callouts: { note2: "note" } }, "> [!note2]")),
+    ).toBe(builtIn("> [!note]"));
+  });
+
+  test("false turns a built-in type off, with its aliases", () => {
+    const options = { callouts: { quote: false } };
+    expect(withOptions(options, "> [!quote] Hi")).toStartWith("<blockquote>");
+    expect(withOptions(options, "> [!cite] Hi")).toStartWith("<blockquote>");
+    expect(withOptions(options, "> [!tip] Hi")).toContain('data-callout="tip"');
+  });
+
+  test("a hast element icon is used as given, fresh per callout", () => {
+    const svg = {
+      type: "element",
+      tagName: "svg",
+      properties: { viewBox: "0 0 24 24", className: ["mine"] },
+      children: [
+        {
+          type: "element",
+          tagName: "circle",
+          properties: { r: 5 },
+          children: [],
+        },
+      ],
+    };
+    const html = withOptions(
+      { callouts: { lab: { icon: svg } } },
+      "> [!lab] a\n\n> [!lab] b",
+    );
+    expect(
+      html.match(
+        /<svg viewBox="0 0 24 24" class="mine"><circle r="5"><\/circle><\/svg>/g,
+      ),
+    ).toHaveLength(2);
+    expect(svg.properties.className).toEqual(["mine"]);
+  });
+
+  test("bad options throw a TypeError when the plugin is set up", () => {
+    const cases = {
+      "may only use letters": { "my-type": {} },
+      "must be a Lucide icon node or a hast element": {
+        lab: { icon: "<svg></svg>" },
+      },
+      "is not a Lucide icon node": { lab: { icon: ["path"] } },
+      "title must be a string": { lab: { title: 1 } },
+      "must be an object": { lab: true },
+      "aliases unknown type": { lab: "nope" },
+      "alias cycle": { a: "b", b: "a" },
+    };
+    for (const [message, callouts] of Object.entries(cases))
+      expect(() => withOptions({ callouts }, "x")).toThrow(message);
+    expect(() =>
+      withOptions({ callouts: { tip: false, x: "tip" } }, "x"),
+    ).toThrow("aliases unknown type");
   });
 });
