@@ -1,7 +1,14 @@
 # remark-obsidian
 
-[![CI](https://github.com/heavycircle/remark-obsidian/actions/workflows/ci.yml/badge.svg)](https://github.com/heavycircle/remark-obsidian/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/@heavycircle/remark-obsidian)](https://www.npmjs.com/package/@heavycircle/remark-obsidian)
+[![CI](https://img.shields.io/github/actions/workflow/status/heavycircle/remark-obsidian/ci.yml?style=flat-square&label=CI)](https://github.com/heavycircle/remark-obsidian/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@heavycircle/remark-obsidian?style=flat-square)](https://www.npmjs.com/package/@heavycircle/remark-obsidian)
+[![downloads](https://img.shields.io/npm/dm/@heavycircle/remark-obsidian?style=flat-square)](https://www.npmjs.com/package/@heavycircle/remark-obsidian)
+[![release](https://img.shields.io/github/v/release/heavycircle/remark-obsidian?style=flat-square)](https://github.com/heavycircle/remark-obsidian/releases/latest)
+[![types](https://img.shields.io/npm/types/@heavycircle/remark-obsidian?style=flat-square)](./index.d.ts)
+[![node](https://img.shields.io/node/v/@heavycircle/remark-obsidian?style=flat-square)](./package.json)
+[![install size](https://packagephobia.com/badge?p=@heavycircle/remark-obsidian)](https://packagephobia.com/result?p=@heavycircle/remark-obsidian)
+[![license](https://img.shields.io/npm/l/@heavycircle/remark-obsidian?style=flat-square)](./LICENSE)
+[![last commit](https://img.shields.io/github/last-commit/heavycircle/remark-obsidian?style=flat-square)](https://github.com/heavycircle/remark-obsidian/commits/main)
 
 A [remark](https://github.com/remarkjs/remark) plugin for [Obsidian-flavored Markdown](https://help.obsidian.md/Editing+and+formatting/Obsidian+Flavored+Markdown): callouts, comments, highlights, wikilinks, embeds and block ids.
 
