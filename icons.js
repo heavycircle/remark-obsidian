@@ -111,35 +111,41 @@ const quote = [
 
 export const chevronDown = ["lucide-chevron-down", path("m6 9 6 6 6-6")];
 
-export const icons = new Map([
+export const types = new Map([
   ["note", pencil],
   ["abstract", clipboardList],
-  ["summary", clipboardList],
-  ["tldr", clipboardList],
   ["info", info],
   ["todo", circleCheck],
   ["tip", flame],
-  ["hint", flame],
-  ["important", flame],
   ["success", check],
-  ["check", check],
-  ["done", check],
   ["question", circleHelp],
-  ["help", circleHelp],
-  ["faq", circleHelp],
   ["warning", triangleAlert],
-  ["caution", triangleAlert],
-  ["attention", triangleAlert],
   ["failure", x],
-  ["fail", x],
-  ["missing", x],
   ["danger", zap],
-  ["error", zap],
   ["bug", bug],
   ["example", list],
   ["quote", quote],
-  ["cite", quote],
 ]);
+
+export const aliases = new Map([
+  ["summary", "abstract"],
+  ["tldr", "abstract"],
+  ["hint", "tip"],
+  ["important", "tip"],
+  ["check", "success"],
+  ["done", "success"],
+  ["help", "question"],
+  ["faq", "question"],
+  ["caution", "warning"],
+  ["attention", "warning"],
+  ["fail", "failure"],
+  ["missing", "failure"],
+  ["error", "danger"],
+  ["cite", "quote"],
+]);
+
+// Obsidian's icon for types it doesn't know
+export const defaultIcon = pencil;
 
 // A fresh node per callout, so later plugins can't edit one shared icon
 export const iconNode = ([classes, ...shapes]) => ({
@@ -156,13 +162,16 @@ export const iconNode = ([classes, ...shapes]) => ({
       strokeWidth: 2,
       strokeLinecap: "round",
       strokeLinejoin: "round",
-      className: ["lucide", ...classes.split(" ")],
+      className: ["lucide", ...classes.split(" ").filter(Boolean)],
       ariaHidden: "true",
     },
     hChildren: shapes.map(([tagName, properties]) => ({
       type: "element",
       tagName,
-      properties: { ...properties },
+      // lucide's own icon nodes may carry undefined attributes
+      properties: Object.fromEntries(
+        Object.entries(properties).filter(([, v]) => v !== undefined),
+      ),
       children: [],
     })),
   },

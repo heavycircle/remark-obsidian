@@ -1,5 +1,5 @@
 import { visit } from "unist-util-visit";
-import { chevronDown, iconNode, icons } from "./icons.js";
+import { aliases, chevronDown, defaultIcon, iconNode, types } from "./icons.js";
 
 const CALLOUT = /^\[!(\w+)\]([+-]?)[ \t]*/;
 
@@ -188,13 +188,101 @@ const div = (className, children, extra = {}) => ({
   data: { hName: "div", hProperties: { className: [className], ...extra } },
 });
 
+const fail = (message) => {
+  throw new TypeError(`remark-obsidian: ${message}`);
+};
+
+// Icons are built per callout, so later plugins can't edit a shared node
+function toIcon(icon, type) {
+  if (Array.isArray(icon)) {
+    if (
+      !icon.every((s) => typeof s?.[0] === "string" && s[1] instanceof Object)
+    )
+      fail(`"${type}" icon is not a Lucide icon node ([tag, attributes][])`);
+    return () => iconNode(["", ...icon]);
+  }
+  if (icon?.type === "element" && typeof icon.tagName === "string")
+    return () => ({
+      type: "icon",
+      data: {
+        hName: icon.tagName,
+        hProperties: structuredClone(icon.properties ?? {}),
+        hChildren: structuredClone(icon.children ?? []),
+      },
+    });
+  // A raw "<svg>" string would need raw HTML, which the plugin never emits
+  fail(`"${type}" icon must be a Lucide icon node or a hast element`);
+}
+
+/*
+Merges options.callouts over the built-ins into one type -> { icon, title }
+lookup. Aliases are resolved last, so they follow overrides of their target
+and may point at types defined later in the object. Bad options throw here,
+once, rather than on some later render.
+*/
+function calloutTypes({ callouts = {} } = {}) {
+  const entries = new Map();
+  for (const [name, spec] of types)
+    entries.set(name, { icon: () => iconNode(spec) });
+  for (const [name, target] of aliases) entries.set(name, target);
+  const own = new Set();
+
+  for (const [key, value] of Object.entries(callouts)) {
+    const name = key.toLowerCase();
+    if (!/^\w+$/.test(name))
+      fail(`callout type "${key}" may only use letters, digits and _`);
+    if (value === false) {
+      entries.delete(name);
+    } else if (typeof value === "string") {
+      entries.set(name, value.toLowerCase());
+      own.add(name);
+    } else if (value instanceof Object && !Array.isArray(value)) {
+      if (value.title !== undefined && typeof value.title !== "string")
+        fail(`"${key}" title must be a string`);
+      entries.set(name, {
+        icon: value.icon === undefined ? undefined : toIcon(value.icon, key),
+        title: value.title,
+        base: entries.get(name),
+      });
+    } else {
+      fail(`"${key}" must be an object, a type to alias, or false`);
+    }
+  }
+
+  const resolve = (entry, seen) => {
+    if (entry === undefined) return;
+    if (typeof entry === "string") {
+      if (seen.has(entry))
+        fail(`alias cycle: ${[...seen, entry].join(" -> ")}`);
+      const target = resolve(entries.get(entry), new Set([...seen, entry]));
+      return target && { icon: target.icon };
+    }
+    return {
+      icon:
+        entry.icon ??
+        resolve(entry.base, seen)?.icon ??
+        (() => iconNode(defaultIcon)),
+      title: entry.title,
+    };
+  };
+
+  const lookup = new Map();
+  for (const [name, entry] of entries) {
+    const resolved = resolve(entry, new Set([name]));
+    // A built-in alias of a type turned off goes with it
+    if (resolved) lookup.set(name, resolved);
+    else if (own.has(name)) fail(`"${name}" aliases unknown type "${entry}"`);
+  }
+  return lookup;
+}
+
 /*
 Callouts are blockquotes whose first line starts with [!type]. Anything else
-(an empty quote, one that opens with code or formatting, or a type with no
-icon) stays a plain blockquote instead of throwing: editors render on every
+(an empty quote, one that opens with code or formatting, or an unknown type)
+stays a plain blockquote instead of throwing: editors render on every
 keystroke, so half-typed quotes have to be safe.
 */
-function calloutVisitor(node) {
+function calloutVisitor(node, lookup) {
   const first = node.children[0];
   const lead = first?.type === "paragraph" ? first.children[0] : undefined;
   if (lead?.type !== "text") return;
@@ -202,7 +290,8 @@ function calloutVisitor(node) {
   const match = lead.value.match(CALLOUT);
   // Types are case-insensitive, so GitHub-style [!NOTE] works too
   const callout = match?.[1].toLowerCase();
-  if (!match || !icons.has(callout)) return;
+  const type = match && lookup.get(callout);
+  if (!type) return;
   const fold = match[2];
 
   const [titleLine, body] = splitFirstLine([
@@ -210,10 +299,11 @@ function calloutVisitor(node) {
     ...first.children.slice(1),
   ]);
   const title = titleLine.filter((n) => n.type !== "text" || n.value.trim());
-  const defaultTitle = callout.charAt(0).toUpperCase() + callout.slice(1);
+  const defaultTitle =
+    type.title ?? callout.charAt(0).toUpperCase() + callout.slice(1);
 
   const titleDiv = div("callout-title", [
-    div("callout-icon", [iconNode(icons.get(callout))]),
+    div("callout-icon", [type.icon()]),
     div(
       "callout-title-inner",
       title.length ? title : [{ type: "text", value: defaultTitle }],
@@ -242,7 +332,8 @@ function calloutVisitor(node) {
 // Code and math keep their markers literally
 const SKIP = new Set(["code", "inlineCode", "math", "inlineMath", "html"]);
 
-export default function remarkObsidian() {
+export default function remarkObsidian(options) {
+  const lookup = calloutTypes(options ?? {});
   return function transform(tree) {
     // Comments and highlights first, so they also apply inside callouts,
     // headings and table cells
@@ -259,6 +350,6 @@ export default function remarkObsidian() {
       parent.children.splice(index, 1);
       return index;
     });
-    visit(tree, "blockquote", calloutVisitor);
+    visit(tree, "blockquote", (node) => calloutVisitor(node, lookup));
   };
 }
