@@ -109,7 +109,11 @@ describe("callouts", () => {
       tagNames: [...defaultSchema.tagNames, "svg", "path", "rect", "circle"],
       attributes: {
         ...defaultSchema.attributes,
-        div: ["className", "dataCallout", "dataCalloutFold"],
+        div: ["className", "dataCallout", "dataCalloutFold", "dataSrc"],
+        a: [
+          ["className", "internal-link", "data-footnote-backref"],
+          ...defaultSchema.attributes.a,
+        ],
         details: ["className", "dataCallout", "dataCalloutFold", "open"],
         summary: ["className"],
         span: ["className"],
@@ -130,7 +134,9 @@ describe("callouts", () => {
         .use(remarkRehype)
         .use(rehypeSanitize, schema)
         .use(rehypeStringify)
-        .processSync("> [!tip]+ Hi\n> ==hl=="),
+        .processSync(
+          "> [!tip]+ Hi\n> ==hl== [[Page#Top|link]] ![[cat.png|30]]",
+        ),
     );
     expect(html).toStartWith(
       '<details class="callout" data-callout="tip" data-callout-fold="+" open>',
@@ -139,6 +145,10 @@ describe("callouts", () => {
     expect(html).toContain('class="lucide lucide-chevron-down"');
     expect(html).toContain(FLAME);
     expect(html).toContain('<span class="highlight">hl</span>');
+    expect(html).toContain(
+      '<a href="/Page#top" class="internal-link">link</a>',
+    );
+    expect(html).toContain('<img src="/cat.png" alt="cat.png" width="30">');
   });
 
   test("no title: named after the type", () => {
@@ -474,5 +484,279 @@ describe("options (#10)", () => {
     expect(() =>
       withOptions({ callouts: { tip: false, x: "tip" } }, "x"),
     ).toThrow("aliases unknown type");
+  });
+});
+
+describe("wikilinks (#11)", () => {
+  const withOptions = (options, md) =>
+    String(
+      unified()
+        .use(remarkParse)
+        .use(remarkGfm)
+        .use(remarkObsidian, options)
+        .use(remarkRehype)
+        .use(rehypeStringify)
+        .processSync(md),
+    );
+  const link = (href, text) =>
+    `<a href="${href}" class="internal-link">${text}</a>`;
+
+  test("[[page]] links to /page, URL-encoded, without pages", () => {
+    expect(render("[[My Note]]")).toBe(
+      `<p>${link("/My%20Note", "My Note")}</p>`,
+    );
+  });
+
+  test("default URLs are paths, so a page name can't be a scheme", () => {
+    expect(render("[[javascript:alert(1)]]")).toContain(
+      'href="/javascript%3Aalert(1)"',
+    );
+    expect(render("![[javascript:x.png]]")).toContain(
+      'src="/javascript%3Ax.png"',
+    );
+    expect(render("[[folder/a b?]]")).toContain('href="/folder/a%20b%3F"');
+  });
+
+  test("[[page|alias]] shows the alias", () => {
+    expect(render("[[page|Shown]]")).toBe(`<p>${link("/page", "Shown")}</p>`);
+  });
+
+  test("headings link to rehype-slug's id; nested headings use the last", () => {
+    expect(render("[[page#Some Heading!]]")).toBe(
+      `<p>${link("/page#some-heading", "page > Some Heading!")}</p>`,
+    );
+    expect(render("[[page#One#Two]]")).toContain(
+      link("/page#two", "page > One > Two"),
+    );
+    expect(render("[[#Local]]")).toBe(`<p>${link("#local", "Local")}</p>`);
+  });
+
+  test("[[page#^id]] links to a block", () => {
+    expect(render("[[page#^abc]]")).toBe(
+      `<p>${link("/page#%5Eabc", "page > ^abc")}</p>`,
+    );
+  });
+
+  test("url maps paths to URLs; null leaves plain text", () => {
+    const url = (path) => (path === "A" ? "/notes/a" : null);
+    expect(withOptions({ url }, "[[A#Top]] [[B|bee]]")).toBe(
+      `<p>${link("/notes/a#top", "A > Top")} bee</p>`,
+    );
+  });
+
+  test("several in a line, around formatting, comments and highlights", () => {
+    expect(render("**[[a]]** and ==[[b]]== %%[[c]]%%")).toBe(
+      `<p><strong>${link("/a", "a")}</strong> and <span class="highlight">${link("/b", "b")}</span> </p>`,
+    );
+  });
+
+  test("work in headings, lists, callouts and table cells (\\| for the alias)", () => {
+    expect(render("# [[a]]")).toBe(`<h1>${link("/a", "a")}</h1>`);
+    expect(render("- [[a]]")).toContain(`<li>${link("/a", "a")}</li>`);
+    expect(content(render("> [!note]\n> [[a]]"))).toBe(link("/a", "a"));
+    expect(render("| x |\n|---|\n| [[a\\|b]] |")).toContain(
+      `<td>${link("/a", "b")}</td>`,
+    );
+  });
+
+  test("code and existing links keep them literally", () => {
+    expect(render("`[[a]]`")).toBe("<p><code>[[a]]</code></p>");
+    expect(render("[x [[a]]](u)")).toBe('<p><a href="u">x [[a]]</a></p>');
+  });
+
+  test("half-typed or empty links are left as typed", () => {
+    for (const md of ["[[a", "[[]]", "[[a]", "[[a|b"])
+      expect(render(md)).toBe(`<p>${md}</p>`);
+  });
+
+  test("![[image]] embeds an image, with |alt or |width(xheight)", () => {
+    expect(render("![[cat.png]]")).toBe(
+      '<p><img src="/cat.png" alt="cat.png"></p>',
+    );
+    expect(render("![[cat.png|A cat]]")).toContain('alt="A cat"');
+    expect(render("![[cat.png|300]]")).toContain('width="300"');
+    expect(render("![[cat.png|300x200]]")).toContain(
+      'alt="cat.png" width="300" height="200"',
+    );
+    expect(withOptions({ url: (p) => `/img/${p}` }, "![[cat.png]]")).toContain(
+      'src="/img/cat.png"',
+    );
+  });
+
+  test("![[note]] is a link without an embed option", () => {
+    expect(render("![[note#Part]]")).toBe(
+      `<p>${link("/note#part", "note > Part")}</p>`,
+    );
+  });
+
+  test("embed inserts a note's content, which the plugin then renders", () => {
+    const targets = [];
+    const embed = (target) => {
+      targets.push(target);
+      return unified().use(remarkParse).parse("> [!tip]\n> ==from== the note");
+    };
+    const html = withOptions({ embed }, "before\n\n![[note#^abc]]");
+    expect(html).toStartWith(
+      '<p>before</p>\n<div class="internal-embed" data-src="note#^abc"><div class="callout" data-callout="tip">',
+    );
+    expect(html).toContain('<span class="highlight">from</span> the note');
+    expect(targets).toEqual([
+      { page: "note", path: "note", heading: undefined, block: "abc" },
+    ]);
+  });
+
+  test("an embed next to other text, or with no content, stays a link", () => {
+    const embed = ({ page }) => (page === "empty" ? null : []);
+    expect(withOptions({ embed }, "see ![[note]]")).toBe(
+      `<p>see ${link("/note", "note")}</p>`,
+    );
+    expect(withOptions({ embed }, "![[empty]]")).toBe(
+      `<p>${link("/empty", "empty")}</p>`,
+    );
+  });
+
+  test("links in an embedded note work; its embeds stay links (no loops)", () => {
+    const embed = () => unified().use(remarkParse).parse("![[self]] [[other]]");
+    expect(withOptions({ embed }, "![[self]]")).toBe(
+      `<div class="internal-embed" data-src="self"><p>${link("/self", "self")} ${link("/other", "other")}</p></div>`,
+    );
+  });
+
+  test("url and embed must be functions", () => {
+    expect(() => withOptions({ url: "/x" }, "x")).toThrow(
+      "url must be a function",
+    );
+    expect(() => withOptions({ embed: {} }, "x")).toThrow(
+      "embed must be a function",
+    );
+  });
+
+  describe("pages: Obsidian's link resolution", () => {
+    const pages = [
+      "Projects/Alpha.md",
+      "Archive/2024/Alpha.md",
+      "Beta.md",
+      "Notes/Beta.md",
+      { path: "People/Ada Lovelace.md", aliases: ["Ada"] },
+      "img/cat.png",
+    ];
+    const r = (md, extra) => withOptions({ pages, ...extra }, md);
+
+    test("a name matches the page anywhere, case-insensitively, .md optional", () => {
+      expect(r("[[alpha]] [[Alpha.md]]")).toBe(
+        `<p>${link("/Projects/Alpha", "alpha")} ${link("/Projects/Alpha", "Alpha.md")}</p>`,
+      );
+    });
+
+    test("the exact path wins, then the page closest to the root", () => {
+      expect(r("[[Beta]]")).toContain(link("/Beta", "Beta"));
+      expect(r("[[Notes/Beta]]")).toContain(link("/Notes/Beta", "Notes/Beta"));
+    });
+
+    test("a path suffix picks the page in that folder", () => {
+      expect(r("[[2024/Alpha]]")).toContain(
+        link("/Archive/2024/Alpha", "2024/Alpha"),
+      );
+      expect(r("[[Other/Alpha]]")).toBe("<p>Other/Alpha</p>");
+    });
+
+    test("aliases match too", () => {
+      expect(r("[[ada#Early life]]")).toContain(
+        link("/People/Ada%20Lovelace#early-life", "ada > Early life"),
+      );
+    });
+
+    test("an unresolved link is plain text, an unresolved image stays as typed", () => {
+      expect(r("[[Missing|shown]] ![[dog.png]]")).toBe(
+        "<p>shown ![[dog.png]]</p>",
+      );
+    });
+
+    test("attachments resolve for embeds", () => {
+      expect(r("![[cat.png|20]]")).toBe(
+        '<p><img src="/img/cat.png" alt="cat.png" width="20"></p>',
+      );
+    });
+
+    test("url gets the matched path", () => {
+      const url = (path) => `https://site.test/${path.replace(/\.md$/, "")}`;
+      expect(r("[[alpha]]", { url })).toContain(
+        'href="https://site.test/Projects/Alpha"',
+      );
+    });
+
+    test("embed gets the page as typed and the matched path", () => {
+      const seen = [];
+      const embed = (target) => (seen.push(target), []);
+      r("![[beta#^b1]]\n\n![[Missing]]", { embed });
+      expect(seen).toEqual([
+        { page: "beta", path: "Beta.md", heading: undefined, block: "b1" },
+      ]);
+    });
+
+    test("bad page lists throw a TypeError when the plugin is set up", () => {
+      for (const [message, bad] of Object.entries({
+        "pages must be an array": "Alpha.md",
+        "each page must be a path": [{ aliases: [] }],
+        "must be strings": [{ path: "A.md", aliases: [1] }],
+      }))
+        expect(() => withOptions({ pages: bad }, "x")).toThrow(message);
+    });
+  });
+});
+
+describe("block ids (#11)", () => {
+  test("text ^id gives the paragraph the id ^id", () => {
+    expect(render("text ^abc")).toBe('<p id="^abc">text</p>');
+    expect(render("one\ntwo ^x-1")).toBe('<p id="^x-1">one<br>\ntwo</p>');
+    expect(render("one\ntwo ^x-1", { breaks: false })).toBe(
+      '<p id="^x-1">one\ntwo</p>',
+    );
+  });
+
+  test("^id on its own line in the paragraph still names it", () => {
+    expect(render("line\n^own")).toBe('<p id="^own">line</p>');
+  });
+
+  test("in a list, the id goes on the item", () => {
+    expect(render("- a ^i1\n- b")).toBe(
+      '<ul>\n<li id="^i1">a</li>\n<li>b</li>\n</ul>',
+    );
+  });
+
+  test("a paragraph that is only ^id names the block before it", () => {
+    expect(render("| a |\n|---|\n| b |\n\n^tbl")).toStartWith(
+      '<table id="^tbl">',
+    );
+    expect(render("> quote\n\n^q")).toStartWith('<blockquote id="^q">');
+    expect(render("- a\n- b\n\n^list")).toStartWith('<ul id="^list">');
+  });
+
+  test("callouts keep their id, after the callout or at the end of the title", () => {
+    expect(render("> [!note] T\n> body\n\n^co")).toStartWith(
+      '<div class="callout" data-callout="note" id="^co">',
+    );
+    expect(render("> [!note] T ^t")).toStartWith(
+      '<div class="callout" data-callout="note" id="^t">',
+    );
+    expect(title(render("> [!note] T ^t"))).toBe("T");
+  });
+
+  test("a trailing comment doesn't hide the id", () => {
+    expect(render("text ^abc %%note%%")).toBe('<p id="^abc">text</p>');
+  });
+
+  test("not an id: no space before ^, nothing to name, or code", () => {
+    expect(render("a^no")).toBe("<p>a^no</p>");
+    expect(render("**b**^no")).toBe("<p><strong>b</strong>^no</p>");
+    expect(render("^alone")).toBe("<p>^alone</p>");
+    expect(render("a ^bad_id")).toBe("<p>a ^bad_id</p>");
+    expect(render("```\nx ^no\n```")).toContain("x ^no");
+  });
+
+  test("[[#^id]] links to the block", () => {
+    expect(render("text ^abc\n\n[[#^abc]]")).toBe(
+      '<p id="^abc">text</p>\n<p><a href="#%5Eabc" class="internal-link">^abc</a></p>',
+    );
   });
 });

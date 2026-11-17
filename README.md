@@ -3,7 +3,7 @@
 [![CI](https://github.com/heavycircle/remark-obsidian/actions/workflows/ci.yml/badge.svg)](https://github.com/heavycircle/remark-obsidian/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/@heavycircle/remark-obsidian)](https://www.npmjs.com/package/@heavycircle/remark-obsidian)
 
-A [remark](https://github.com/remarkjs/remark) plugin for three pieces of [Obsidian-flavored Markdown](https://help.obsidian.md/Editing+and+formatting/Obsidian+Flavored+Markdown): callouts, comments, and highlights.
+A [remark](https://github.com/remarkjs/remark) plugin for [Obsidian-flavored Markdown](https://help.obsidian.md/Editing+and+formatting/Obsidian+Flavored+Markdown): callouts, comments, highlights, wikilinks, embeds and block ids.
 
 ## Contents
 
@@ -21,22 +21,24 @@ A [remark](https://github.com/remarkjs/remark) plugin for three pieces of [Obsid
 
 ## What it supports
 
-| Syntax            | Result                            |
-| ----------------- | --------------------------------- |
-| `> [!note] Title` | [Callouts](#callouts), with icons |
-| `%%hidden%%`      | [Comments](#comments), removed    |
-| `==highlighted==` | [Highlights](#highlights)         |
+| Syntax                        | Result                            |
+| ----------------------------- | --------------------------------- |
+| `> [!note] Title`             | [Callouts](#callouts), with icons |
+| `%%hidden%%`                  | [Comments](#comments), removed    |
+| `==highlighted==`             | [Highlights](#highlights)         |
+| `[[Page#Heading\|Alias]]`     | [Wikilinks](#wikilinks)           |
+| `![[image.png]]`, `![[Note]]` | [Embeds](#embeds)                 |
+| `text ^id`                    | [Block ids](#block-ids)           |
 
 Other Obsidian syntax is covered by existing plugins:
 
-| Syntax                         | Plugin                                                            |
-| ------------------------------ | ----------------------------------------------------------------- |
-| `~~strike~~`, tables, `- [ ]`  | [remark-gfm](https://github.com/remarkjs/remark-gfm)              |
-| `[[Internal link]]`            | [remark-wiki-link](https://github.com/landakram/remark-wiki-link) |
-| `$math$`                       | [remark-math](https://github.com/remarkjs/remark-math)            |
-| Line breaks without two spaces | [remark-breaks](https://github.com/remarkjs/remark-breaks)        |
+| Syntax                         | Plugin                                                     |
+| ------------------------------ | ---------------------------------------------------------- |
+| `~~strike~~`, tables, `- [ ]`  | [remark-gfm](https://github.com/remarkjs/remark-gfm)       |
+| `$math$`                       | [remark-math](https://github.com/remarkjs/remark-math)     |
+| Line breaks without two spaces | [remark-breaks](https://github.com/remarkjs/remark-breaks) |
 
-Embeds (`![[file]]`) and block references (`^id`) aren't supported.
+Don't combine it with [remark-wiki-link](https://github.com/landakram/remark-wiki-link): that plugin parses `[[…]]` first, so this one never sees those links.
 
 ## Install
 
@@ -121,7 +123,42 @@ A blockquote whose first line starts with `[!type]` becomes a callout. The rest 
 
 `==text==` becomes `<span class="highlight">text</span>`. Highlights can span formatting (`==**bold** text==`). An empty `====` or an unclosed `==` is left as typed.
 
-Comments and highlights work in paragraphs, headings, table cells, list items, and callout titles and bodies. Code and math keep them literally.
+### Wikilinks
+
+`[[Page]]` links to another page; `[[Page|Alias]]` shows different text.
+
+- **Headings:** `[[Page#Heading]]` links to `Page#heading`, slugged like [rehype-slug](https://github.com/rehypejs/rehype-slug) so it meets that plugin's heading ids. `[[Page#A#B]]` links to the nested heading `B`; `[[#Heading]]` links within the page.
+- **Blocks:** `[[Page#^id]]` links to the [block id](#block-ids) `^id` on that page.
+- **Text:** without an alias, the link reads like Obsidian's: `Page > Heading`.
+- **Finding the page:** give [`options.pages`](#optionspages) your vault's file list and links resolve as in Obsidian: `[[Page]]` finds `Page.md` in any folder. Without it, the link text is taken as the path.
+- **URLs:** `/` plus the path without `.md`, URL-encoded (`[[Projects/My Note]]` links to `/Projects/My%20Note`). [`options.url`](#optionsurl) changes that.
+- **Tables:** escape the alias pipe, `[[Page\|Alias]]`, as in Obsidian.
+
+### Embeds
+
+- **Images:** `![[cat.png]]` becomes `<img>`. `![[cat.png|A cat]]` sets the alt text, `![[cat.png|300]]` the width and `![[cat.png|300x200]]` both.
+- **Notes:** `![[Note]]`, `![[Note#Heading]]` and `![[Note#^id]]` alone in a paragraph insert the note's content, which [`options.embed`](#optionsembed) provides (the plugin can't read files). Without that option, or next to other text, they render as links.
+
+### Block ids
+
+`^id` at the end of a block (letters, digits and `-`, after a space) becomes its `id="^id"`, so `[[Page#^id]]` links to it. The marker itself isn't shown.
+
+```md
+A paragraph you can link to. ^intro
+
+- a list item ^first
+
+| a table |
+| ------- |
+
+^table
+```
+
+- **Paragraphs:** `text ^id`, at the end of the paragraph's last line.
+- **List items:** `- item ^id` puts the id on the `<li>`.
+- **Other blocks:** a paragraph that is only `^id`, after a blank line, names the block before it: a table, list, quote or callout. Callouts also take `^id` at the end of the title line.
+
+Comments, highlights and wikilinks work in paragraphs, headings, table cells, list items, and callout titles and bodies. Code and math keep them literally.
 
 ## Markup
 
@@ -136,6 +173,10 @@ The HTML below is the plugin's public contract: it only changes in a major versi
   <div class="callout-content">Body</div>
 </div>
 <span class="highlight">highlighted</span>
+<a href="/Page#heading" class="internal-link">Page > Heading</a>
+<img src="/cat.png" alt="cat.png" width="300" />
+<div class="internal-embed" data-src="Note#Heading">…the note…</div>
+<p id="^intro">A paragraph you can link to.</p>
 ```
 
 A callout with a fold marker (`[!faq]-` or `[!faq]+`) is the same, with `<details>` and `<summary>` in place of the outer two `<div>`s and a fold icon at the end of the title:
@@ -196,7 +237,7 @@ The default export is `remarkObsidian`, which takes an optional `options` object
 unified().use(remarkObsidian, options);
 ```
 
-Types are included (`Plugin<[Options?], Root>`, plus the `Options`, `CalloutDefinition` and `IconNode` types).
+Types are included (`Plugin<[Options?], Root>`, plus the `Options`, `CalloutDefinition`, `IconNode`, `Page` and `EmbedTarget` types).
 
 ### `options.callouts`
 
@@ -230,9 +271,58 @@ Give a new type a color with its `data-callout` selector, one per name or alias:
 }
 ```
 
+### `options.pages`
+
+`Array<string | { path, aliases? }>`. The vault's files, notes and attachments, as paths from its root. With it, links resolve the way Obsidian resolves them:
+
+1. **Exact path:** `[[Projects/Alpha]]` matches `Projects/Alpha.md`.
+2. **Name or path suffix:** `[[Alpha]]` matches `Alpha.md` in any folder, and `[[2024/Alpha]]` one in a `2024` folder. With several matches, the one closest to the vault root wins.
+3. **Alias:** `[[Ada]]` matches a page listing `"Ada"` in `aliases`.
+
+Matching is case-insensitive and `.md` is optional. An unresolved link renders as its text, without a link, and an unresolved image embed stays as typed.
+
+```js
+import { glob } from "node:fs/promises"; // Node 22+
+
+const pages = [];
+for await (const path of glob("**/*.{md,png,jpg}", { cwd: "vault" }))
+  pages.push(path);
+
+unified().use(remarkObsidian, { pages });
+```
+
+Pass `{ path: "People/Ada Lovelace.md", aliases: ["Ada"] }` for pages with frontmatter aliases. Links relative to the current note (`[[../Page]]`) aren't supported.
+
+### `options.url`
+
+`(path: string) => string | null`. Turns a resolved path (from `pages`, or the link text without them) into a URL; the plugin appends the `#heading` or `#^id` part. Return `null` to render that link as plain text.
+
+```js
+unified().use(remarkObsidian, {
+  pages,
+  url: (path) =>
+    `/notes/${path.replace(/\.md$/, "").toLowerCase().replaceAll(" ", "-")}`,
+});
+```
+
+### `options.embed`
+
+`({ page, path, heading, block }) => Root | RootContent[] | null`. Returns the mdast of an embedded note. `page` is the name as written and `path` what it resolved to (`heading` is the last heading of `![[Note#A#B]]`, `block` the id of `![[Note#^id]]`, without `^`). Return nothing to render that embed as a link.
+
+```js
+unified().use(remarkObsidian, {
+  embed: ({ path }) =>
+    unified()
+      .use(remarkParse)
+      .parse(readFileSync(`vault/${path}`, "utf8")),
+});
+```
+
+The plugin renders the content like the rest of the page: callouts, comments, highlights and wikilinks work in it. Embeds inside an embedded note stay links, so a note that embeds itself can't loop. Cutting the note down to the heading or block is up to you.
+
 ## Security
 
-The plugin adds trusted markup only: callout wrappers, classes, and its own icon SVGs, all as syntax tree nodes rather than raw HTML. Text from the Markdown, including inside highlights, stays escaped.
+The plugin adds trusted markup only: callout wrappers, classes, links and its own icon SVGs, all as syntax tree nodes rather than raw HTML. Text from the Markdown, including inside highlights and wikilinks, stays escaped. Default wikilink URLs are always paths (`[[javascript:x]]` links to `/javascript%3Ax`); URLs from your `url` and content from your `embed` are trusted as given.
 
 If you render untrusted Markdown with `allowDangerousHtml` or rehype-raw, raw HTML written in the Markdown itself passes through. Run [rehype-sanitize](https://github.com/rehypejs/rehype-sanitize) last. Its default schema strips the callout classes and the icons, so allow those:
 
@@ -244,7 +334,11 @@ const schema = {
   tagNames: [...defaultSchema.tagNames, "svg", "path", "rect", "circle"],
   attributes: {
     ...defaultSchema.attributes,
-    div: ["className", "dataCallout", "dataCalloutFold"],
+    div: ["className", "dataCallout", "dataCalloutFold", "dataSrc"],
+    a: [
+      ["className", "internal-link", "data-footnote-backref"],
+      ...defaultSchema.attributes.a,
+    ],
     details: ["className", "dataCallout", "dataCalloutFold", "open"],
     summary: ["className"],
     span: ["className"],
@@ -260,7 +354,7 @@ const schema = {
 };
 ```
 
-A custom hast icon that uses other elements or attributes needs them in the schema too.
+A custom hast icon that uses other elements or attributes needs them in the schema too. rehype-sanitize also prefixes every `id` with `user-content-` against DOM clobbering, so block ids become `user-content-^id` and `[[#^id]]` links need the same prefix (GitHub fixes them up with a script).
 
 The icons are Lucide icons ([ISC](https://github.com/lucide-icons/lucide/blob/main/LICENSE)); the notice is in `icons.js`.
 
