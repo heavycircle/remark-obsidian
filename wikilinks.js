@@ -22,31 +22,85 @@ function parseTarget(raw) {
   return { page, heading, block, sub: sub.filter(Boolean) };
 }
 
-// Encoding each segment keeps "javascript:x" a relative path, not a scheme
-const relative = (page) => page.split("/").map(encodeURIComponent).join("/");
+const fail = (message) => {
+  throw new TypeError(`remark-obsidian: ${message}`);
+};
+const stripMd = (path) => path.replace(/\.md$/i, "");
+const key = (path) => stripMd(path.trim().replace(/^\.?\//, "")).toLowerCase();
+
+// Encoding each segment keeps "javascript:x" a path, never a URL scheme
+const defaultUrl = (path) =>
+  "/" +
+  stripMd(path.replace(/^\.?\//, ""))
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/");
+
+/*
+Finds the page a link means, as Obsidian does: the exact path, else any page
+whose path ends in the link ("Page" anywhere, "folder/Page" in a folder of
+that name), closest to the vault root first, else an alias. Case-insensitive;
+".md" is optional. Without a page list, the link is taken as the path.
+*/
+function pageFinder(pages) {
+  if (pages === undefined) return (link) => link;
+  if (!Array.isArray(pages)) fail("pages must be an array");
+  const byPath = new Map();
+  const byName = new Map();
+  const byAlias = new Map();
+  for (const page of pages) {
+    const { path, aliases = [] } =
+      typeof page === "string" ? { path: page } : (page ?? {});
+    if (typeof path !== "string" || !path.trim())
+      fail("each page must be a path or { path, aliases }");
+    if (!Array.isArray(aliases) || aliases.some((a) => typeof a !== "string"))
+      fail(`aliases of "${path}" must be strings`);
+    const k = key(path);
+    if (!byPath.has(k)) byPath.set(k, path);
+    const name = k.split("/").at(-1);
+    byName.set(name, [...(byName.get(name) ?? []), [k, path]]);
+    for (const alias of aliases)
+      if (!byAlias.has(key(alias))) byAlias.set(key(alias), path);
+  }
+  return (link) => {
+    const k = key(link);
+    if (byPath.has(k)) return byPath.get(k);
+    const hits = (byName.get(k.split("/").at(-1)) ?? [])
+      .filter(([path]) => path.endsWith(`/${k}`))
+      .sort(
+        ([a], [b]) =>
+          a.split("/").length - b.split("/").length || a.localeCompare(b),
+      );
+    return hits.length ? hits[0][1] : byAlias.get(k);
+  };
+}
 
 const fragment = ({ heading, block }) =>
   block ? `#^${block}` : heading ? `#${slug(heading)}` : "";
 
-export function validateLinkOptions({ resolve, embed }) {
-  for (const [name, value] of Object.entries({ resolve, embed }))
+// Checked once, when the plugin is set up
+export function linkOptions({ pages, url = defaultUrl, embed }) {
+  for (const [name, value] of Object.entries({ url, embed }))
     if (value !== undefined && typeof value !== "function")
-      throw new TypeError(`remark-obsidian: ${name} must be a function`);
+      fail(`${name} must be a function`);
+  return { find: pageFinder(pages), toUrl: url, embed };
 }
 
-function toNodes(match, { resolve, embed }, alone) {
+function toNodes(match, { find, toUrl, embed }, alone) {
   const [typed, bang, rawTarget, alias] = match;
   const target = parseTarget(rawTarget);
   const { page, sub } = target;
-  const url = (page) => {
+  const path = page ? find(page) : undefined;
+  // An unresolved page, or a url() that returns no string, gives no link
+  const url = () => {
     if (!page) return fragment(target);
-    const base = resolve ? resolve(page) : relative(page);
+    const base = path === undefined ? undefined : toUrl(path);
     return typeof base === "string" ? base + fragment(target) : undefined;
   };
   const text = (value) => ({ type: "text", value });
 
   if (bang && IMAGE.test(page) && !sub.length) {
-    const href = url(page);
+    const href = url();
     if (href === undefined) return [text(typed)];
     const size = alias?.trim().match(SIZE);
     return [
@@ -68,9 +122,10 @@ function toNodes(match, { resolve, embed }, alone) {
 
   // An embedded note is block content, so only a paragraph holding nothing
   // else becomes one; next to other text it stays a link
-  if (bang && page && embed && alone) {
+  if (bang && path !== undefined && embed && alone) {
     const content = embed({
       page,
+      path,
       heading: target.heading,
       block: target.block,
     });
@@ -88,7 +143,7 @@ function toNodes(match, { resolve, embed }, alone) {
       ];
   }
 
-  const href = url(page);
+  const href = url();
   // Obsidian shows "page > heading" when there's no alias
   const label = alias?.trim() || [page, ...sub].filter(Boolean).join(" > ");
   if (href === undefined) return [text(label)];

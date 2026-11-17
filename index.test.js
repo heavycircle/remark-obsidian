@@ -145,8 +145,10 @@ describe("callouts", () => {
     expect(html).toContain('class="lucide lucide-chevron-down"');
     expect(html).toContain(FLAME);
     expect(html).toContain('<span class="highlight">hl</span>');
-    expect(html).toContain('<a href="Page#top" class="internal-link">link</a>');
-    expect(html).toContain('<img src="cat.png" alt="cat.png" width="30">');
+    expect(html).toContain(
+      '<a href="/Page#top" class="internal-link">link</a>',
+    );
+    expect(html).toContain('<img src="/cat.png" alt="cat.png" width="30">');
   });
 
   test("no title: named after the type", () => {
@@ -499,61 +501,61 @@ describe("wikilinks (#11)", () => {
   const link = (href, text) =>
     `<a href="${href}" class="internal-link">${text}</a>`;
 
-  test("[[page]] links to the page, URL-encoded by default", () => {
+  test("[[page]] links to /page, URL-encoded, without pages", () => {
     expect(render("[[My Note]]")).toBe(
-      `<p>${link("My%20Note", "My Note")}</p>`,
+      `<p>${link("/My%20Note", "My Note")}</p>`,
     );
   });
 
-  test("default URLs stay relative, so a page name can't be a scheme", () => {
+  test("default URLs are paths, so a page name can't be a scheme", () => {
     expect(render("[[javascript:alert(1)]]")).toContain(
-      'href="javascript%3Aalert(1)"',
+      'href="/javascript%3Aalert(1)"',
     );
     expect(render("![[javascript:x.png]]")).toContain(
-      'src="javascript%3Ax.png"',
+      'src="/javascript%3Ax.png"',
     );
-    expect(render("[[folder/a b?]]")).toContain('href="folder/a%20b%3F"');
+    expect(render("[[folder/a b?]]")).toContain('href="/folder/a%20b%3F"');
   });
 
   test("[[page|alias]] shows the alias", () => {
-    expect(render("[[page|Shown]]")).toBe(`<p>${link("page", "Shown")}</p>`);
+    expect(render("[[page|Shown]]")).toBe(`<p>${link("/page", "Shown")}</p>`);
   });
 
   test("headings link to rehype-slug's id; nested headings use the last", () => {
     expect(render("[[page#Some Heading!]]")).toBe(
-      `<p>${link("page#some-heading", "page > Some Heading!")}</p>`,
+      `<p>${link("/page#some-heading", "page > Some Heading!")}</p>`,
     );
     expect(render("[[page#One#Two]]")).toContain(
-      link("page#two", "page > One > Two"),
+      link("/page#two", "page > One > Two"),
     );
     expect(render("[[#Local]]")).toBe(`<p>${link("#local", "Local")}</p>`);
   });
 
   test("[[page#^id]] links to a block", () => {
     expect(render("[[page#^abc]]")).toBe(
-      `<p>${link("page#%5Eabc", "page > ^abc")}</p>`,
+      `<p>${link("/page#%5Eabc", "page > ^abc")}</p>`,
     );
   });
 
-  test("resolve maps pages to URLs; null leaves plain text", () => {
-    const resolve = (page) => (page === "A" ? "/notes/a" : null);
-    expect(withOptions({ resolve }, "[[A#Top]] [[B|bee]]")).toBe(
+  test("url maps paths to URLs; null leaves plain text", () => {
+    const url = (path) => (path === "A" ? "/notes/a" : null);
+    expect(withOptions({ url }, "[[A#Top]] [[B|bee]]")).toBe(
       `<p>${link("/notes/a#top", "A > Top")} bee</p>`,
     );
   });
 
   test("several in a line, around formatting, comments and highlights", () => {
     expect(render("**[[a]]** and ==[[b]]== %%[[c]]%%")).toBe(
-      `<p><strong>${link("a", "a")}</strong> and <span class="highlight">${link("b", "b")}</span> </p>`,
+      `<p><strong>${link("/a", "a")}</strong> and <span class="highlight">${link("/b", "b")}</span> </p>`,
     );
   });
 
   test("work in headings, lists, callouts and table cells (\\| for the alias)", () => {
-    expect(render("# [[a]]")).toBe(`<h1>${link("a", "a")}</h1>`);
-    expect(render("- [[a]]")).toContain(`<li>${link("a", "a")}</li>`);
-    expect(content(render("> [!note]\n> [[a]]"))).toBe(link("a", "a"));
+    expect(render("# [[a]]")).toBe(`<h1>${link("/a", "a")}</h1>`);
+    expect(render("- [[a]]")).toContain(`<li>${link("/a", "a")}</li>`);
+    expect(content(render("> [!note]\n> [[a]]"))).toBe(link("/a", "a"));
     expect(render("| x |\n|---|\n| [[a\\|b]] |")).toContain(
-      `<td>${link("a", "b")}</td>`,
+      `<td>${link("/a", "b")}</td>`,
     );
   });
 
@@ -569,21 +571,21 @@ describe("wikilinks (#11)", () => {
 
   test("![[image]] embeds an image, with |alt or |width(xheight)", () => {
     expect(render("![[cat.png]]")).toBe(
-      '<p><img src="cat.png" alt="cat.png"></p>',
+      '<p><img src="/cat.png" alt="cat.png"></p>',
     );
     expect(render("![[cat.png|A cat]]")).toContain('alt="A cat"');
     expect(render("![[cat.png|300]]")).toContain('width="300"');
     expect(render("![[cat.png|300x200]]")).toContain(
       'alt="cat.png" width="300" height="200"',
     );
-    expect(
-      withOptions({ resolve: (p) => `/img/${p}` }, "![[cat.png]]"),
-    ).toContain('src="/img/cat.png"');
+    expect(withOptions({ url: (p) => `/img/${p}` }, "![[cat.png]]")).toContain(
+      'src="/img/cat.png"',
+    );
   });
 
   test("![[note]] is a link without an embed option", () => {
     expect(render("![[note#Part]]")).toBe(
-      `<p>${link("note#part", "note > Part")}</p>`,
+      `<p>${link("/note#part", "note > Part")}</p>`,
     );
   });
 
@@ -599,34 +601,107 @@ describe("wikilinks (#11)", () => {
     );
     expect(html).toContain('<span class="highlight">from</span> the note');
     expect(targets).toEqual([
-      { page: "note", heading: undefined, block: "abc" },
+      { page: "note", path: "note", heading: undefined, block: "abc" },
     ]);
   });
 
   test("an embed next to other text, or with no content, stays a link", () => {
     const embed = ({ page }) => (page === "empty" ? null : []);
     expect(withOptions({ embed }, "see ![[note]]")).toBe(
-      `<p>see ${link("note", "note")}</p>`,
+      `<p>see ${link("/note", "note")}</p>`,
     );
     expect(withOptions({ embed }, "![[empty]]")).toBe(
-      `<p>${link("empty", "empty")}</p>`,
+      `<p>${link("/empty", "empty")}</p>`,
     );
   });
 
   test("links in an embedded note work; its embeds stay links (no loops)", () => {
     const embed = () => unified().use(remarkParse).parse("![[self]] [[other]]");
     expect(withOptions({ embed }, "![[self]]")).toBe(
-      `<div class="internal-embed" data-src="self"><p>${link("self", "self")} ${link("other", "other")}</p></div>`,
+      `<div class="internal-embed" data-src="self"><p>${link("/self", "self")} ${link("/other", "other")}</p></div>`,
     );
   });
 
-  test("resolve and embed must be functions", () => {
-    expect(() => withOptions({ resolve: "/x" }, "x")).toThrow(
-      "resolve must be a function",
+  test("url and embed must be functions", () => {
+    expect(() => withOptions({ url: "/x" }, "x")).toThrow(
+      "url must be a function",
     );
     expect(() => withOptions({ embed: {} }, "x")).toThrow(
       "embed must be a function",
     );
+  });
+
+  describe("pages: Obsidian's link resolution", () => {
+    const pages = [
+      "Projects/Alpha.md",
+      "Archive/2024/Alpha.md",
+      "Beta.md",
+      "Notes/Beta.md",
+      { path: "People/Ada Lovelace.md", aliases: ["Ada"] },
+      "img/cat.png",
+    ];
+    const r = (md, extra) => withOptions({ pages, ...extra }, md);
+
+    test("a name matches the page anywhere, case-insensitively, .md optional", () => {
+      expect(r("[[alpha]] [[Alpha.md]]")).toBe(
+        `<p>${link("/Projects/Alpha", "alpha")} ${link("/Projects/Alpha", "Alpha.md")}</p>`,
+      );
+    });
+
+    test("the exact path wins, then the page closest to the root", () => {
+      expect(r("[[Beta]]")).toContain(link("/Beta", "Beta"));
+      expect(r("[[Notes/Beta]]")).toContain(link("/Notes/Beta", "Notes/Beta"));
+    });
+
+    test("a path suffix picks the page in that folder", () => {
+      expect(r("[[2024/Alpha]]")).toContain(
+        link("/Archive/2024/Alpha", "2024/Alpha"),
+      );
+      expect(r("[[Other/Alpha]]")).toBe("<p>Other/Alpha</p>");
+    });
+
+    test("aliases match too", () => {
+      expect(r("[[ada#Early life]]")).toContain(
+        link("/People/Ada%20Lovelace#early-life", "ada > Early life"),
+      );
+    });
+
+    test("an unresolved link is plain text, an unresolved image stays as typed", () => {
+      expect(r("[[Missing|shown]] ![[dog.png]]")).toBe(
+        "<p>shown ![[dog.png]]</p>",
+      );
+    });
+
+    test("attachments resolve for embeds", () => {
+      expect(r("![[cat.png|20]]")).toBe(
+        '<p><img src="/img/cat.png" alt="cat.png" width="20"></p>',
+      );
+    });
+
+    test("url gets the matched path", () => {
+      const url = (path) => `https://site.test/${path.replace(/\.md$/, "")}`;
+      expect(r("[[alpha]]", { url })).toContain(
+        'href="https://site.test/Projects/Alpha"',
+      );
+    });
+
+    test("embed gets the page as typed and the matched path", () => {
+      const seen = [];
+      const embed = (target) => (seen.push(target), []);
+      r("![[beta#^b1]]\n\n![[Missing]]", { embed });
+      expect(seen).toEqual([
+        { page: "beta", path: "Beta.md", heading: undefined, block: "b1" },
+      ]);
+    });
+
+    test("bad page lists throw a TypeError when the plugin is set up", () => {
+      for (const [message, bad] of Object.entries({
+        "pages must be an array": "Alpha.md",
+        "each page must be a path": [{ aliases: [] }],
+        "must be strings": [{ path: "A.md", aliases: [1] }],
+      }))
+        expect(() => withOptions({ pages: bad }, "x")).toThrow(message);
+    });
   });
 });
 
