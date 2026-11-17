@@ -1,5 +1,5 @@
 import type { Element } from "hast";
-import type { Root } from "mdast";
+import type { Root, RootContent } from "mdast";
 import type { Plugin } from "unified";
 
 /**
@@ -28,6 +28,26 @@ export interface Options {
    * built-in type off.
    */
   callouts?: Record<string, CalloutDefinition | string | false>;
+  /**
+   * URL of a wikilinked or embedded page or file, without the `#heading` or
+   * `#^block` part (the plugin appends it). Return `null` to render the link
+   * as plain text. Defaults to the name, URL-encoded.
+   */
+  resolve?: (page: string) => string | null | undefined;
+  /**
+   * Content of an embedded note (`![[note]]` alone in its paragraph), as
+   * mdast. Return nothing to render the embed as a link instead. Without
+   * this option, note embeds render as links.
+   */
+  embed?: (target: EmbedTarget) => Root | RootContent[] | null | undefined;
+}
+
+export interface EmbedTarget {
+  page: string;
+  /** The last heading in `![[page#a#b]]`, as written. */
+  heading?: string;
+  /** The block id in `![[page#^id]]`, without the `^`. */
+  block?: string;
 }
 
 /**

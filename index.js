@@ -1,5 +1,6 @@
 import { visit } from "unist-util-visit";
 import { aliases, chevronDown, defaultIcon, iconNode, types } from "./icons.js";
+import { validateLinkOptions, wikiLinks } from "./wikilinks.js";
 
 const CALLOUT = /^\[!(\w+)\]([+-]?)[ \t]*/;
 
@@ -334,7 +335,9 @@ const SKIP = new Set(["code", "inlineCode", "math", "inlineMath", "html"]);
 
 export default function remarkObsidian(options) {
   const lookup = calloutTypes(options ?? {});
+  validateLinkOptions(options ?? {});
   return function transform(tree) {
+    wikiLinks(tree, options ?? {}, SKIP);
     // Comments and highlights first, so they also apply inside callouts,
     // headings and table cells
     visit(tree, (node) => {

@@ -3,7 +3,7 @@
 [![CI](https://github.com/heavycircle/remark-obsidian/actions/workflows/ci.yml/badge.svg)](https://github.com/heavycircle/remark-obsidian/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/@heavycircle/remark-obsidian)](https://www.npmjs.com/package/@heavycircle/remark-obsidian)
 
-A [remark](https://github.com/remarkjs/remark) plugin for three pieces of [Obsidian-flavored Markdown](https://help.obsidian.md/Editing+and+formatting/Obsidian+Flavored+Markdown): callouts, comments, and highlights.
+A [remark](https://github.com/remarkjs/remark) plugin for [Obsidian-flavored Markdown](https://help.obsidian.md/Editing+and+formatting/Obsidian+Flavored+Markdown): callouts, comments, highlights, wikilinks and embeds.
 
 ## Contents
 
@@ -21,22 +21,23 @@ A [remark](https://github.com/remarkjs/remark) plugin for three pieces of [Obsid
 
 ## What it supports
 
-| Syntax            | Result                            |
-| ----------------- | --------------------------------- |
-| `> [!note] Title` | [Callouts](#callouts), with icons |
-| `%%hidden%%`      | [Comments](#comments), removed    |
-| `==highlighted==` | [Highlights](#highlights)         |
+| Syntax                        | Result                            |
+| ----------------------------- | --------------------------------- |
+| `> [!note] Title`             | [Callouts](#callouts), with icons |
+| `%%hidden%%`                  | [Comments](#comments), removed    |
+| `==highlighted==`             | [Highlights](#highlights)         |
+| `[[Page#Heading\|Alias]]`     | [Wikilinks](#wikilinks)           |
+| `![[image.png]]`, `![[Note]]` | [Embeds](#embeds)                 |
 
 Other Obsidian syntax is covered by existing plugins:
 
-| Syntax                         | Plugin                                                            |
-| ------------------------------ | ----------------------------------------------------------------- |
-| `~~strike~~`, tables, `- [ ]`  | [remark-gfm](https://github.com/remarkjs/remark-gfm)              |
-| `[[Internal link]]`            | [remark-wiki-link](https://github.com/landakram/remark-wiki-link) |
-| `$math$`                       | [remark-math](https://github.com/remarkjs/remark-math)            |
-| Line breaks without two spaces | [remark-breaks](https://github.com/remarkjs/remark-breaks)        |
+| Syntax                         | Plugin                                                     |
+| ------------------------------ | ---------------------------------------------------------- |
+| `~~strike~~`, tables, `- [ ]`  | [remark-gfm](https://github.com/remarkjs/remark-gfm)       |
+| `$math$`                       | [remark-math](https://github.com/remarkjs/remark-math)     |
+| Line breaks without two spaces | [remark-breaks](https://github.com/remarkjs/remark-breaks) |
 
-Embeds (`![[file]]`) and block references (`^id`) aren't supported.
+Don't combine it with [remark-wiki-link](https://github.com/landakram/remark-wiki-link): that plugin parses `[[…]]` first, so this one never sees those links.
 
 ## Install
 
@@ -121,7 +122,22 @@ A blockquote whose first line starts with `[!type]` becomes a callout. The rest 
 
 `==text==` becomes `<span class="highlight">text</span>`. Highlights can span formatting (`==**bold** text==`). An empty `====` or an unclosed `==` is left as typed.
 
-Comments and highlights work in paragraphs, headings, table cells, list items, and callout titles and bodies. Code and math keep them literally.
+### Wikilinks
+
+`[[Page]]` links to another page; `[[Page|Alias]]` shows different text.
+
+- **Headings:** `[[Page#Heading]]` links to `Page#heading`, slugged like [rehype-slug](https://github.com/rehypejs/rehype-slug) so it meets that plugin's heading ids. `[[Page#A#B]]` links to the nested heading `B`; `[[#Heading]]` links within the page.
+- **Blocks:** `[[Page#^id]]` links to `Page#^id`.
+- **Text:** without an alias, the link reads like Obsidian's: `Page > Heading`.
+- **URLs:** by default the page name, URL-encoded, as a relative link. Use [`options.resolve`](#optionsresolve) to map names to your URLs.
+- **Tables:** escape the alias pipe, `[[Page\|Alias]]`, as in Obsidian.
+
+### Embeds
+
+- **Images:** `![[cat.png]]` becomes `<img>`. `![[cat.png|A cat]]` sets the alt text, `![[cat.png|300]]` the width and `![[cat.png|300x200]]` both.
+- **Notes:** `![[Note]]`, `![[Note#Heading]]` and `![[Note#^id]]` alone in a paragraph insert the note's content, which [`options.embed`](#optionsembed) provides (the plugin can't read files). Without that option, or next to other text, they render as links.
+
+Comments, highlights and wikilinks work in paragraphs, headings, table cells, list items, and callout titles and bodies. Code and math keep them literally.
 
 ## Markup
 
@@ -136,6 +152,9 @@ The HTML below is the plugin's public contract: it only changes in a major versi
   <div class="callout-content">Body</div>
 </div>
 <span class="highlight">highlighted</span>
+<a href="Page#heading" class="internal-link">Page > Heading</a>
+<img src="cat.png" alt="cat.png" width="300" />
+<div class="internal-embed" data-src="Note#Heading">…the note…</div>
 ```
 
 A callout with a fold marker (`[!faq]-` or `[!faq]+`) is the same, with `<details>` and `<summary>` in place of the outer two `<div>`s and a fold icon at the end of the title:
@@ -196,7 +215,7 @@ The default export is `remarkObsidian`, which takes an optional `options` object
 unified().use(remarkObsidian, options);
 ```
 
-Types are included (`Plugin<[Options?], Root>`, plus the `Options`, `CalloutDefinition` and `IconNode` types).
+Types are included (`Plugin<[Options?], Root>`, plus the `Options`, `CalloutDefinition`, `IconNode` and `EmbedTarget` types).
 
 ### `options.callouts`
 
@@ -230,9 +249,34 @@ Give a new type a color with its `data-callout` selector, one per name or alias:
 }
 ```
 
+### `options.resolve`
+
+`(page: string) => string | null`. Maps a wikilinked or embedded page or file name to its URL; the plugin appends the `#heading` or `#^id` part. Return `null` to render that link as plain text.
+
+```js
+unified().use(remarkObsidian, {
+  resolve: (page) => (pages.has(page) ? `/notes/${slugify(page)}` : null),
+});
+```
+
+### `options.embed`
+
+`({ page, heading, block }) => Root | RootContent[] | null`. Returns the mdast of an embedded note (`heading` is the last heading of `![[Note#A#B]]`, `block` the id of `![[Note#^id]]`, without `^`). Return nothing to render that embed as a link.
+
+```js
+unified().use(remarkObsidian, {
+  embed: ({ page }) =>
+    unified()
+      .use(remarkParse)
+      .parse(notes.get(page) ?? ""),
+});
+```
+
+The plugin renders the content like the rest of the page: callouts, comments, highlights and wikilinks work in it. Embeds inside an embedded note stay links, so a note that embeds itself can't loop. Cutting the note down to the heading or block is up to you.
+
 ## Security
 
-The plugin adds trusted markup only: callout wrappers, classes, and its own icon SVGs, all as syntax tree nodes rather than raw HTML. Text from the Markdown, including inside highlights, stays escaped.
+The plugin adds trusted markup only: callout wrappers, classes, links and its own icon SVGs, all as syntax tree nodes rather than raw HTML. Text from the Markdown, including inside highlights and wikilinks, stays escaped. Default wikilink URLs are always relative (`[[javascript:x]]` links to `javascript%3Ax`); URLs from your `resolve` and content from your `embed` are trusted as given.
 
 If you render untrusted Markdown with `allowDangerousHtml` or rehype-raw, raw HTML written in the Markdown itself passes through. Run [rehype-sanitize](https://github.com/rehypejs/rehype-sanitize) last. Its default schema strips the callout classes and the icons, so allow those:
 
@@ -244,7 +288,11 @@ const schema = {
   tagNames: [...defaultSchema.tagNames, "svg", "path", "rect", "circle"],
   attributes: {
     ...defaultSchema.attributes,
-    div: ["className", "dataCallout", "dataCalloutFold"],
+    div: ["className", "dataCallout", "dataCalloutFold", "dataSrc"],
+    a: [
+      ["className", "internal-link", "data-footnote-backref"],
+      ...defaultSchema.attributes.a,
+    ],
     details: ["className", "dataCallout", "dataCalloutFold", "open"],
     summary: ["className"],
     span: ["className"],
