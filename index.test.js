@@ -629,3 +629,59 @@ describe("wikilinks (#11)", () => {
     );
   });
 });
+
+describe("block ids (#11)", () => {
+  test("text ^id gives the paragraph the id ^id", () => {
+    expect(render("text ^abc")).toBe('<p id="^abc">text</p>');
+    expect(render("one\ntwo ^x-1")).toBe('<p id="^x-1">one<br>\ntwo</p>');
+    expect(render("one\ntwo ^x-1", { breaks: false })).toBe(
+      '<p id="^x-1">one\ntwo</p>',
+    );
+  });
+
+  test("^id on its own line in the paragraph still names it", () => {
+    expect(render("line\n^own")).toBe('<p id="^own">line</p>');
+  });
+
+  test("in a list, the id goes on the item", () => {
+    expect(render("- a ^i1\n- b")).toBe(
+      '<ul>\n<li id="^i1">a</li>\n<li>b</li>\n</ul>',
+    );
+  });
+
+  test("a paragraph that is only ^id names the block before it", () => {
+    expect(render("| a |\n|---|\n| b |\n\n^tbl")).toStartWith(
+      '<table id="^tbl">',
+    );
+    expect(render("> quote\n\n^q")).toStartWith('<blockquote id="^q">');
+    expect(render("- a\n- b\n\n^list")).toStartWith('<ul id="^list">');
+  });
+
+  test("callouts keep their id, after the callout or at the end of the title", () => {
+    expect(render("> [!note] T\n> body\n\n^co")).toStartWith(
+      '<div class="callout" data-callout="note" id="^co">',
+    );
+    expect(render("> [!note] T ^t")).toStartWith(
+      '<div class="callout" data-callout="note" id="^t">',
+    );
+    expect(title(render("> [!note] T ^t"))).toBe("T");
+  });
+
+  test("a trailing comment doesn't hide the id", () => {
+    expect(render("text ^abc %%note%%")).toBe('<p id="^abc">text</p>');
+  });
+
+  test("not an id: no space before ^, nothing to name, or code", () => {
+    expect(render("a^no")).toBe("<p>a^no</p>");
+    expect(render("**b**^no")).toBe("<p><strong>b</strong>^no</p>");
+    expect(render("^alone")).toBe("<p>^alone</p>");
+    expect(render("a ^bad_id")).toBe("<p>a ^bad_id</p>");
+    expect(render("```\nx ^no\n```")).toContain("x ^no");
+  });
+
+  test("[[#^id]] links to the block", () => {
+    expect(render("text ^abc\n\n[[#^abc]]")).toBe(
+      '<p id="^abc">text</p>\n<p><a href="#%5Eabc" class="internal-link">^abc</a></p>',
+    );
+  });
+});

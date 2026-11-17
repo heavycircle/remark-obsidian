@@ -3,7 +3,7 @@
 [![CI](https://github.com/heavycircle/remark-obsidian/actions/workflows/ci.yml/badge.svg)](https://github.com/heavycircle/remark-obsidian/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/@heavycircle/remark-obsidian)](https://www.npmjs.com/package/@heavycircle/remark-obsidian)
 
-A [remark](https://github.com/remarkjs/remark) plugin for [Obsidian-flavored Markdown](https://help.obsidian.md/Editing+and+formatting/Obsidian+Flavored+Markdown): callouts, comments, highlights, wikilinks and embeds.
+A [remark](https://github.com/remarkjs/remark) plugin for [Obsidian-flavored Markdown](https://help.obsidian.md/Editing+and+formatting/Obsidian+Flavored+Markdown): callouts, comments, highlights, wikilinks, embeds and block ids.
 
 ## Contents
 
@@ -28,6 +28,7 @@ A [remark](https://github.com/remarkjs/remark) plugin for [Obsidian-flavored Mar
 | `==highlighted==`             | [Highlights](#highlights)         |
 | `[[Page#Heading\|Alias]]`     | [Wikilinks](#wikilinks)           |
 | `![[image.png]]`, `![[Note]]` | [Embeds](#embeds)                 |
+| `text ^id`                    | [Block ids](#block-ids)           |
 
 Other Obsidian syntax is covered by existing plugins:
 
@@ -127,7 +128,7 @@ A blockquote whose first line starts with `[!type]` becomes a callout. The rest 
 `[[Page]]` links to another page; `[[Page|Alias]]` shows different text.
 
 - **Headings:** `[[Page#Heading]]` links to `Page#heading`, slugged like [rehype-slug](https://github.com/rehypejs/rehype-slug) so it meets that plugin's heading ids. `[[Page#A#B]]` links to the nested heading `B`; `[[#Heading]]` links within the page.
-- **Blocks:** `[[Page#^id]]` links to `Page#^id`.
+- **Blocks:** `[[Page#^id]]` links to the [block id](#block-ids) `^id` on that page.
 - **Text:** without an alias, the link reads like Obsidian's: `Page > Heading`.
 - **URLs:** by default the page name, URL-encoded, as a relative link. Use [`options.resolve`](#optionsresolve) to map names to your URLs.
 - **Tables:** escape the alias pipe, `[[Page\|Alias]]`, as in Obsidian.
@@ -136,6 +137,25 @@ A blockquote whose first line starts with `[!type]` becomes a callout. The rest 
 
 - **Images:** `![[cat.png]]` becomes `<img>`. `![[cat.png|A cat]]` sets the alt text, `![[cat.png|300]]` the width and `![[cat.png|300x200]]` both.
 - **Notes:** `![[Note]]`, `![[Note#Heading]]` and `![[Note#^id]]` alone in a paragraph insert the note's content, which [`options.embed`](#optionsembed) provides (the plugin can't read files). Without that option, or next to other text, they render as links.
+
+### Block ids
+
+`^id` at the end of a block (letters, digits and `-`, after a space) becomes its `id="^id"`, so `[[Page#^id]]` links to it. The marker itself isn't shown.
+
+```md
+A paragraph you can link to. ^intro
+
+- a list item ^first
+
+| a table |
+| ------- |
+
+^table
+```
+
+- **Paragraphs:** `text ^id`, at the end of the paragraph's last line.
+- **List items:** `- item ^id` puts the id on the `<li>`.
+- **Other blocks:** a paragraph that is only `^id`, after a blank line, names the block before it: a table, list, quote or callout. Callouts also take `^id` at the end of the title line.
 
 Comments, highlights and wikilinks work in paragraphs, headings, table cells, list items, and callout titles and bodies. Code and math keep them literally.
 
@@ -155,6 +175,7 @@ The HTML below is the plugin's public contract: it only changes in a major versi
 <a href="Page#heading" class="internal-link">Page > Heading</a>
 <img src="cat.png" alt="cat.png" width="300" />
 <div class="internal-embed" data-src="Note#Heading">…the note…</div>
+<p id="^intro">A paragraph you can link to.</p>
 ```
 
 A callout with a fold marker (`[!faq]-` or `[!faq]+`) is the same, with `<details>` and `<summary>` in place of the outer two `<div>`s and a fold icon at the end of the title:
@@ -308,7 +329,7 @@ const schema = {
 };
 ```
 
-A custom hast icon that uses other elements or attributes needs them in the schema too.
+A custom hast icon that uses other elements or attributes needs them in the schema too. rehype-sanitize also prefixes every `id` with `user-content-` against DOM clobbering, so block ids become `user-content-^id` and `[[#^id]]` links need the same prefix (GitHub fixes them up with a script).
 
 The icons are Lucide icons ([ISC](https://github.com/lucide-icons/lucide/blob/main/LICENSE)); the notice is in `icons.js`.
 

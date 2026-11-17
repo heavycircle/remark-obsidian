@@ -1,5 +1,6 @@
 import { visit } from "unist-util-visit";
 import { aliases, chevronDown, defaultIcon, iconNode, types } from "./icons.js";
+import { blockIds } from "./anchors.js";
 import { validateLinkOptions, wikiLinks } from "./wikilinks.js";
 
 const CALLOUT = /^\[!(\w+)\]([+-]?)[ \t]*/;
@@ -189,6 +190,8 @@ const div = (className, children, extra = {}) => ({
   data: { hName: "div", hProperties: { className: [className], ...extra } },
 });
 
+const pick = (object, key) => (object?.[key] ? { [key]: object[key] } : {});
+
 const fail = (message) => {
   throw new TypeError(`remark-obsidian: ${message}`);
 };
@@ -323,6 +326,8 @@ function calloutVisitor(node, lookup) {
       className: ["callout"],
       dataCallout: callout,
       ...(fold && { dataCalloutFold: fold, open: fold === "+" }),
+      // A block id, from "^id" after the callout or at the end of its title
+      ...pick(node.data?.hProperties ?? first.data?.hProperties, "id"),
     },
   };
   node.children = content.length
@@ -353,6 +358,8 @@ export default function remarkObsidian(options) {
       parent.children.splice(index, 1);
       return index;
     });
+    // After comments, so "text ^id %%note%%" still ends in its id
+    blockIds(tree);
     visit(tree, "blockquote", (node) => calloutVisitor(node, lookup));
   };
 }
