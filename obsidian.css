@@ -27,7 +27,7 @@ wherever it's declared. Colors are "r, g, b" triplets.
   --callout-title-color: inherit;
   --callout-title-padding: 0;
   --callout-title-size: inherit;
-  --callout-title-weight: inherit;
+  --callout-title-weight: 600;
   --callout-content-padding: 0;
   --callout-content-background: transparent;
 
@@ -84,69 +84,69 @@ wherever it's declared. Colors are "r, g, b" triplets.
   background-color: var(--callout-content-background);
 }
 
-.callout[callout="note"] {
+.callout[data-callout="note"] {
   --callout-color: var(--callout-note);
 }
 
-.callout[callout="abstract"],
-.callout[callout="summary"],
-.callout[callout="tldr"] {
+.callout[data-callout="abstract"],
+.callout[data-callout="summary"],
+.callout[data-callout="tldr"] {
   --callout-color: var(--callout-summary);
 }
 
-.callout[callout="info"] {
+.callout[data-callout="info"] {
   --callout-color: var(--callout-info);
 }
 
-.callout[callout="todo"] {
+.callout[data-callout="todo"] {
   --callout-color: var(--callout-todo);
 }
 
-.callout[callout="tip"],
-.callout[callout="hint"],
-.callout[callout="important"] {
+.callout[data-callout="tip"],
+.callout[data-callout="hint"],
+.callout[data-callout="important"] {
   --callout-color: var(--callout-tip);
 }
 
-.callout[callout="success"],
-.callout[callout="check"],
-.callout[callout="done"] {
+.callout[data-callout="success"],
+.callout[data-callout="check"],
+.callout[data-callout="done"] {
   --callout-color: var(--callout-success);
 }
 
-.callout[callout="question"],
-.callout[callout="help"],
-.callout[callout="faq"] {
+.callout[data-callout="question"],
+.callout[data-callout="help"],
+.callout[data-callout="faq"] {
   --callout-color: var(--callout-question);
 }
 
-.callout[callout="warning"],
-.callout[callout="caution"],
-.callout[callout="attention"] {
+.callout[data-callout="warning"],
+.callout[data-callout="caution"],
+.callout[data-callout="attention"] {
   --callout-color: var(--callout-warning);
 }
 
-.callout[callout="failure"],
-.callout[callout="fail"],
-.callout[callout="missing"] {
+.callout[data-callout="failure"],
+.callout[data-callout="fail"],
+.callout[data-callout="missing"] {
   --callout-color: var(--callout-fail);
 }
 
-.callout[callout="danger"],
-.callout[callout="error"] {
+.callout[data-callout="danger"],
+.callout[data-callout="error"] {
   --callout-color: var(--callout-error);
 }
 
-.callout[callout="bug"] {
+.callout[data-callout="bug"] {
   --callout-color: var(--callout-bug);
 }
 
-.callout[callout="example"] {
+.callout[data-callout="example"] {
   --callout-color: var(--callout-example);
 }
 
-.callout[callout="quote"],
-.callout[callout="cite"] {
+.callout[data-callout="quote"],
+.callout[data-callout="cite"] {
   --callout-color: var(--callout-quote);
 }
 

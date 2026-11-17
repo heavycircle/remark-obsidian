@@ -185,7 +185,7 @@ function splitFirstLine(children) {
 const div = (className, children, extra = {}) => ({
   type: "div",
   children,
-  data: { hName: "div", hProperties: { className, ...extra } },
+  data: { hName: "div", hProperties: { className: [className], ...extra } },
 });
 
 /*
@@ -212,7 +212,7 @@ function calloutVisitor(node) {
   const title = titleLine.filter((n) => n.type !== "text" || n.value.trim());
   const defaultTitle = callout.charAt(0).toUpperCase() + callout.slice(1);
 
-  const titleDiv = div("callout-title font-bold", [
+  const titleDiv = div("callout-title", [
     div("callout-icon", [iconNode(icons.get(callout))]),
     div(
       "callout-title-inner",
@@ -225,11 +225,11 @@ function calloutVisitor(node) {
   node.data = {
     hName: "div",
     hProperties: {
-      className: "callout",
-      callout,
+      className: ["callout"],
+      dataCallout: callout,
       // [!type]- starts folded and [!type]+ starts open in Obsidian; exposed
       // for styling or scripts, since folding needs more than markup
-      ...(fold && { "data-callout-fold": fold }),
+      ...(fold && { dataCalloutFold: fold }),
     },
   };
   node.children = content.length
