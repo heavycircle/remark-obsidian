@@ -65,12 +65,41 @@ describe("callouts", () => {
   });
 
   test("markup matches the README's contract (#8)", () => {
-    expect(render("> [!faq]- Title\n> Body")).toBe(
-      '<div class="callout" data-callout="faq" data-callout-fold="-">' +
+    expect(render("> [!faq] Title\n> Body")).toBe(
+      '<div class="callout" data-callout="faq">' +
         '<div class="callout-title"><div class="callout-icon"><svg/></div>' +
         '<div class="callout-title-inner">Title</div></div>' +
         '<div class="callout-content">Body</div></div>',
     );
+  });
+
+  test("[!type]- renders a folded <details> (#9)", () => {
+    expect(render("> [!faq]- Title\n> Body")).toBe(
+      '<details class="callout" data-callout="faq" data-callout-fold="-">' +
+        '<summary class="callout-title"><div class="callout-icon"><svg/></div>' +
+        '<div class="callout-title-inner">Title</div>' +
+        '<div class="callout-fold"><svg/></div></summary>' +
+        '<div class="callout-content">Body</div></details>',
+    );
+  });
+
+  test("[!type]+ renders an open <details>", () => {
+    expect(render("> [!faq]+ Title\n> Body")).toStartWith(
+      '<details class="callout" data-callout="faq" data-callout-fold="+" open>' +
+        '<summary class="callout-title">',
+    );
+  });
+
+  test("a foldable callout without a body is just its summary", () => {
+    expect(render("> [!faq]-")).toMatch(
+      /^<details [^>]*><summary [^>]*>.*<\/summary><\/details>$/,
+    );
+  });
+
+  test("callouts without a fold marker have no <details> or fold icon", () => {
+    const html = render("> [!faq] Plain\n> Body");
+    expect(html).not.toContain("details");
+    expect(html).not.toContain("callout-fold");
   });
 
   test("callouts and icons survive rehype-sanitize with the README's schema", () => {
@@ -80,6 +109,8 @@ describe("callouts", () => {
       attributes: {
         ...defaultSchema.attributes,
         div: ["className", "dataCallout", "dataCalloutFold"],
+        details: ["className", "dataCallout", "dataCalloutFold", "open"],
+        summary: ["className"],
         span: ["className"],
         svg: [
           ...["xmlns", "width", "height", "viewBox", "fill", "stroke"],
@@ -101,9 +132,10 @@ describe("callouts", () => {
         .processSync("> [!tip]+ Hi\n> ==hl=="),
     );
     expect(html).toStartWith(
-      '<div class="callout" data-callout="tip" data-callout-fold="+">',
+      '<details class="callout" data-callout="tip" data-callout-fold="+" open>',
     );
-    expect(html).toContain('<div class="callout-title">');
+    expect(html).toContain('<summary class="callout-title">');
+    expect(html).toContain('class="lucide lucide-chevron-down"');
     expect(html).toContain(FLAME);
     expect(html).toContain('<span class="highlight">hl</span>');
   });

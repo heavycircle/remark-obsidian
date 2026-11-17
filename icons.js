@@ -109,6 +109,8 @@ const quote = [
   path(`M5 3${quoteMark}`),
 ];
 
+export const chevronDown = ["lucide-chevron-down", path("m6 9 6 6 6-6")];
+
 export const icons = new Map([
   ["note", pencil],
   ["abstract", clipboardList],

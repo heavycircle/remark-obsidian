@@ -72,6 +72,31 @@ wherever it's declared. Colors are "r, g, b" triplets.
   align-items: flex-start;
 }
 
+summary.callout-title {
+  cursor: pointer;
+  list-style: none;
+}
+
+summary.callout-title::-webkit-details-marker {
+  display: none;
+}
+
+.callout-fold {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.callout-fold svg {
+  height: 1em;
+  width: 1em;
+  transition: transform 100ms ease-in-out;
+}
+
+details.callout:not([open]) .callout-fold svg {
+  transform: rotate(-90deg);
+}
+
 .callout-title-inner {
   --font-weight: var(--callout-title-weight);
   font-weight: var(--font-weight);
