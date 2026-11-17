@@ -1,5 +1,5 @@
 import { visit } from "unist-util-visit";
-import { iconNode, icons } from "./icons.js";
+import { chevronDown, iconNode, icons } from "./icons.js";
 
 const CALLOUT = /^\[!(\w+)\]([+-]?)[ \t]*/;
 
@@ -218,18 +218,20 @@ function calloutVisitor(node) {
       "callout-title-inner",
       title.length ? title : [{ type: "text", value: defaultTitle }],
     ),
+    ...(fold ? [div("callout-fold", [iconNode(chevronDown)])] : []),
   ]);
+  // [!type]- starts folded and [!type]+ starts open; <details> folds without
+  // JavaScript, so only callouts with a marker become one
+  if (fold) titleDiv.data.hName = "summary";
   const content = [...body, ...node.children.slice(1)];
 
   node.type = "div";
   node.data = {
-    hName: "div",
+    hName: fold ? "details" : "div",
     hProperties: {
       className: ["callout"],
       dataCallout: callout,
-      // [!type]- starts folded and [!type]+ starts open in Obsidian; exposed
-      // for styling or scripts, since folding needs more than markup
-      ...(fold && { dataCalloutFold: fold }),
+      ...(fold && { dataCalloutFold: fold, open: fold === "+" }),
     },
   };
   node.children = content.length

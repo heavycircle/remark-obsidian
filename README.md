@@ -94,7 +94,7 @@ A blockquote whose first line starts with `[!type]` becomes a callout. The rest 
 
 - **No title:** `> [!tip]` alone gets one from its type ("Tip").
 - **Case-insensitive types:** GitHub-style `[!NOTE]` works.
-- **Fold markers:** `[!faq]-` (folded) and `[!faq]+` (open) set `data-callout-fold="-"` or `"+"` on the callout. Folding itself is up to your CSS or JavaScript.
+- **Collapsible:** `[!faq]-` starts folded and `[!faq]+` starts open. These callouts render as `<details>` / `<summary>`, so they fold without JavaScript; the title is the clickable summary.
 - **Plain blockquotes:** a quote with an unknown type, or whose first line doesn't start with `[!type]`, stays a normal blockquote.
 
 | Type       | Aliases                |
@@ -128,7 +128,7 @@ Comments and highlights work in paragraphs, headings, table cells, list items, a
 The HTML below is the plugin's public contract: it only changes in a major version.
 
 ```html
-<div class="callout" data-callout="faq" data-callout-fold="-">
+<div class="callout" data-callout="note">
   <div class="callout-title">
     <div class="callout-icon"><svg class="lucide lucide-…">…</svg></div>
     <div class="callout-title-inner">Title</div>
@@ -138,12 +138,27 @@ The HTML below is the plugin's public contract: it only changes in a major versi
 <span class="highlight">highlighted</span>
 ```
 
+A callout with a fold marker (`[!faq]-` or `[!faq]+`) is the same, with `<details>` and `<summary>` in place of the outer two `<div>`s and a fold icon at the end of the title:
+
+```html
+<details class="callout" data-callout="faq" data-callout-fold="+" open>
+  <summary class="callout-title">
+    <div class="callout-icon"><svg class="lucide lucide-…">…</svg></div>
+    <div class="callout-title-inner">Title</div>
+    <div class="callout-fold">
+      <svg class="lucide lucide-chevron-down">…</svg>
+    </div>
+  </summary>
+  <div class="callout-content">Body</div>
+</details>
+```
+
 - **`data-callout`:** the type, lowercased, as written (an alias stays an alias: `[!hint]` gives `data-callout="hint"`).
-- **`data-callout-fold`:** `-` or `+`, only when the title has a fold marker.
+- **`data-callout-fold`:** `-` or `+`, only on foldable callouts; `+` also sets `open`.
 - **`callout-content`:** left out when the callout has no body.
 - **Icons:** Lucide SVGs with `aria-hidden="true"`; their paths may change with Lucide updates.
 
-Upgrading from 1.x: CSS that selects `[callout="…"]` must change to `[data-callout="…"]`, and the title no longer carries Tailwind's `font-bold` (the stylesheet sets `--callout-title-weight: 600`).
+Upgrading from 1.x: CSS that selects `[callout="…"]` must change to `[data-callout="…"]`, the title no longer carries Tailwind's `font-bold` (the stylesheet sets `--callout-title-weight: 600`), and callouts with a fold marker are `<details>` instead of `<div>`.
 
 ## Styling
 
@@ -198,6 +213,8 @@ const schema = {
   attributes: {
     ...defaultSchema.attributes,
     div: ["className", "dataCallout", "dataCalloutFold"],
+    details: ["className", "dataCallout", "dataCalloutFold", "open"],
+    summary: ["className"],
     span: ["className"],
     svg: [
       ...["xmlns", "width", "height", "viewBox", "fill", "stroke"],
