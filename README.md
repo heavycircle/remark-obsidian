@@ -6,7 +6,7 @@
 [![release](https://img.shields.io/github/v/release/heavycircle/remark-obsidian?style=flat-square)](https://github.com/heavycircle/remark-obsidian/releases/latest)
 [![types](https://img.shields.io/npm/types/@heavycircle/remark-obsidian?style=flat-square)](./index.d.ts)
 [![node](https://img.shields.io/node/v/@heavycircle/remark-obsidian?style=flat-square)](./package.json)
-[![install size](https://packagephobia.com/badge?p=@heavycircle/remark-obsidian)](https://packagephobia.com/result?p=@heavycircle/remark-obsidian)
+[![unpacked size](https://img.shields.io/npm/unpacked-size/@heavycircle/remark-obsidian?style=flat-square)](https://www.npmjs.com/package/@heavycircle/remark-obsidian)
 [![license](https://img.shields.io/npm/l/@heavycircle/remark-obsidian?style=flat-square)](./LICENSE)
 [![last commit](https://img.shields.io/github/last-commit/heavycircle/remark-obsidian?style=flat-square)](https://github.com/heavycircle/remark-obsidian/commits/main)
 
