@@ -20,7 +20,7 @@ const html = String(
 const expect = (ok, what) => {
   if (!ok) throw new Error(`smoke test failed: ${what}\n${html}`);
 };
-expect(html.includes('callout="tip"'), "callout rendered");
+expect(html.includes('data-callout="tip"'), "callout rendered");
 expect(html.includes('class="lucide lucide-flame"'), "icon without raw HTML");
 expect(html.includes('<span class="highlight">hl</span>'), "highlight");
 expect(!html.includes("gone"), "comment removed");

@@ -33,7 +33,7 @@ const content = (html) =>
 describe("callouts", () => {
   test("[!type] with a title and body", () => {
     const html = render("> [!warning] Careful\n> Body text");
-    expect(html).toStartWith('<div class="callout" callout="warning">');
+    expect(html).toStartWith('<div class="callout" data-callout="warning">');
     expect(html).toContain('<div class="callout-icon"><svg/></div>');
     expect(title(html)).toBe("Careful");
     expect(content(html)).toBe("Body text");
@@ -64,12 +64,23 @@ describe("callouts", () => {
     expect(html).toContain(`<div class="callout-icon">${FLAME}</div>`);
   });
 
-  test("icons survive rehype-sanitize with the README's schema", () => {
+  test("markup matches the README's contract (#8)", () => {
+    expect(render("> [!faq]- Title\n> Body")).toBe(
+      '<div class="callout" data-callout="faq" data-callout-fold="-">' +
+        '<div class="callout-title"><div class="callout-icon"><svg/></div>' +
+        '<div class="callout-title-inner">Title</div></div>' +
+        '<div class="callout-content">Body</div></div>',
+    );
+  });
+
+  test("callouts and icons survive rehype-sanitize with the README's schema", () => {
     const schema = {
       ...defaultSchema,
       tagNames: [...defaultSchema.tagNames, "svg", "path", "rect", "circle"],
       attributes: {
         ...defaultSchema.attributes,
+        div: ["className", "dataCallout", "dataCalloutFold"],
+        span: ["className"],
         svg: [
           ...["xmlns", "width", "height", "viewBox", "fill", "stroke"],
           ...["strokeWidth", "strokeLinecap", "strokeLinejoin"],
@@ -87,9 +98,14 @@ describe("callouts", () => {
         .use(remarkRehype)
         .use(rehypeSanitize, schema)
         .use(rehypeStringify)
-        .processSync("> [!tip] Hi"),
+        .processSync("> [!tip]+ Hi\n> ==hl=="),
     );
+    expect(html).toStartWith(
+      '<div class="callout" data-callout="tip" data-callout-fold="+">',
+    );
+    expect(html).toContain('<div class="callout-title">');
     expect(html).toContain(FLAME);
+    expect(html).toContain('<span class="highlight">hl</span>');
   });
 
   test("no title: named after the type", () => {
@@ -116,7 +132,7 @@ describe("callouts", () => {
 
   test("types are case-insensitive (GitHub-style [!NOTE])", () => {
     const html = render("> [!NOTE]\n> Body");
-    expect(html).toContain('callout="note"');
+    expect(html).toContain('data-callout="note"');
     expect(title(html)).toBe("Note");
   });
 
@@ -138,11 +154,13 @@ describe("callouts", () => {
   test("nested callouts", () => {
     const html = render("> [!note] Outer\n> > [!tip] Inner\n> > body");
     expect(html.match(/class="callout"/g)).toHaveLength(2);
-    expect(html).toContain('callout="tip"');
+    expect(html).toContain('data-callout="tip"');
   });
 
   test("a callout inside a list item", () => {
-    expect(render("- > [!bug] In a list\n  > body")).toContain('callout="bug"');
+    expect(render("- > [!bug] In a list\n  > body")).toContain(
+      'data-callout="bug"',
+    );
   });
 
   test("without remark-breaks the body is kept", () => {

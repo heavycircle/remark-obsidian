@@ -11,6 +11,7 @@ A [remark](https://github.com/remarkjs/remark) plugin for three pieces of [Obsid
 - [Install](#install)
 - [Use](#use)
 - [Syntax](#syntax)
+- [Markup](#markup)
 - [Styling](#styling)
 - [API](#api)
 - [Security](#security)
@@ -65,8 +66,8 @@ const html = await unified()
 ```
 
 ```html
-<div class="callout" callout="tip">
-  <div class="callout-title font-bold">
+<div class="callout" data-callout="tip">
+  <div class="callout-title">
     <div class="callout-icon"><svg>…</svg></div>
     <div class="callout-title-inner">Hello</div>
   </div>
@@ -122,6 +123,28 @@ A blockquote whose first line starts with `[!type]` becomes a callout. The rest 
 
 Comments and highlights work in paragraphs, headings, table cells, list items, and callout titles and bodies. Code and math keep them literally.
 
+## Markup
+
+The HTML below is the plugin's public contract: it only changes in a major version.
+
+```html
+<div class="callout" data-callout="faq" data-callout-fold="-">
+  <div class="callout-title">
+    <div class="callout-icon"><svg class="lucide lucide-…">…</svg></div>
+    <div class="callout-title-inner">Title</div>
+  </div>
+  <div class="callout-content">Body</div>
+</div>
+<span class="highlight">highlighted</span>
+```
+
+- **`data-callout`:** the type, lowercased, as written (an alias stays an alias: `[!hint]` gives `data-callout="hint"`).
+- **`data-callout-fold`:** `-` or `+`, only when the title has a fold marker.
+- **`callout-content`:** left out when the callout has no body.
+- **Icons:** Lucide SVGs with `aria-hidden="true"`; their paths may change with Lucide updates.
+
+Upgrading from 1.x: CSS that selects `[callout="…"]` must change to `[data-callout="…"]`, and the title no longer carries Tailwind's `font-bold` (the stylesheet sets `--callout-title-weight: 600`).
+
 ## Styling
 
 Import the stylesheet once, for example from your global CSS:
@@ -132,22 +155,23 @@ Import the stylesheet once, for example from your global CSS:
 
 It works out of the box with the colors of Obsidian's default theme. To theme it, set any of these custom properties; yours always win.
 
-| Property                                                                                                                                                                                  | Default                  |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
-| `--callout-note`, `--callout-info`, `--callout-todo`, `--callout-default`                                                                                                                 | `8, 109, 221`            |
-| `--callout-summary`, `--callout-tip`                                                                                                                                                      | `0, 191, 188`            |
-| `--callout-success`                                                                                                                                                                       | `8, 185, 78`             |
-| `--callout-question`, `--callout-warning`                                                                                                                                                 | `236, 117, 0`            |
-| `--callout-fail`, `--callout-error`, `--callout-bug`                                                                                                                                      | `233, 49, 71`            |
-| `--callout-example`                                                                                                                                                                       | `120, 82, 238`           |
-| `--callout-quote`                                                                                                                                                                         | `158, 158, 158`          |
-| `--callout-padding`                                                                                                                                                                       | `12px 12px 12px 24px`    |
-| `--callout-radius`                                                                                                                                                                        | `4px`                    |
-| `--callout-border-width`, `--callout-border-opacity`                                                                                                                                      | `0px`, `0.25`            |
-| `--callout-title-color`, `--callout-title-size`, `--callout-title-weight`, `--callout-title-padding`, `--callout-content-padding`, `--callout-content-background`, `--callout-blend-mode` | inherit or none          |
-| `--text-highlight-bg`                                                                                                                                                                     | `rgba(255, 208, 0, 0.4)` |
+| Property                                                                                                                                                        | Default                  |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| `--callout-note`, `--callout-info`, `--callout-todo`, `--callout-default`                                                                                       | `8, 109, 221`            |
+| `--callout-summary`, `--callout-tip`                                                                                                                            | `0, 191, 188`            |
+| `--callout-success`                                                                                                                                             | `8, 185, 78`             |
+| `--callout-question`, `--callout-warning`                                                                                                                       | `236, 117, 0`            |
+| `--callout-fail`, `--callout-error`, `--callout-bug`                                                                                                            | `233, 49, 71`            |
+| `--callout-example`                                                                                                                                             | `120, 82, 238`           |
+| `--callout-quote`                                                                                                                                               | `158, 158, 158`          |
+| `--callout-padding`                                                                                                                                             | `12px 12px 12px 24px`    |
+| `--callout-radius`                                                                                                                                              | `4px`                    |
+| `--callout-border-width`, `--callout-border-opacity`                                                                                                            | `0px`, `0.25`            |
+| `--callout-title-weight`                                                                                                                                        | `600`                    |
+| `--callout-title-color`, `--callout-title-size`, `--callout-title-padding`, `--callout-content-padding`, `--callout-content-background`, `--callout-blend-mode` | inherit or none          |
+| `--text-highlight-bg`                                                                                                                                           | `rgba(255, 208, 0, 0.4)` |
 
-Colors are `r, g, b` triplets. Callout types are selected with `.callout[callout="tip"]`.
+Colors are `r, g, b` triplets. Callout types are selected with `.callout[data-callout="tip"]`.
 
 ## API
 
@@ -173,7 +197,8 @@ const schema = {
   tagNames: [...defaultSchema.tagNames, "svg", "path", "rect", "circle"],
   attributes: {
     ...defaultSchema.attributes,
-    // plus className and callout on div, className on span, for the markup above
+    div: ["className", "dataCallout", "dataCalloutFold"],
+    span: ["className"],
     svg: [
       ...["xmlns", "width", "height", "viewBox", "fill", "stroke"],
       ...["strokeWidth", "strokeLinecap", "strokeLinejoin"],
